@@ -6,6 +6,9 @@ require("dotenv").config({
 });
 
 require("./cron/checkin.cron");
+require("./cron/subscription-cron");
+require("./cron/sms-cron");
+
 console.log("DEBUG MONGO_URI =", process.env.MONGO_URI);
 
 const app = require("./app");

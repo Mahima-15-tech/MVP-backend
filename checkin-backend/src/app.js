@@ -6,7 +6,10 @@ const checkinRoutes = require("./routes/checkin.routes");
 const userRoutes = require("./routes/user.routes");
 const contactRoutes = require("./routes/contact.routes");
 const alertRoutes = require("./routes/alert.routes");
-const adminRoutes = require("./routes/admin.routes");
+const adminRoutes = require("./routes/admin/admin.routes");
+const subscriptionRoutes = require("./routes/subscriptionRoutes");
+const webhookRoutes = require("./routes/webhookRoutes");
+const creditRoutes = require("./routes/creditRoutes");
 
 
 const app = express();
@@ -19,8 +22,13 @@ app.use("/api/checkin", checkinRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/contacts", contactRoutes);
 app.use("/api/alerts", alertRoutes);
-app.use("/api/admin/auth", adminRoutes);
+// app.use("/api/admin/auth", adminRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/subscription", subscriptionRoutes);
+app.use("/api/webhook", webhookRoutes);
+app.use("/api/credits", creditRoutes);
+
+
 
 
 app.get("/", (req, res) => {

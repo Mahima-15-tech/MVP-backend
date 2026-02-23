@@ -2,6 +2,12 @@ const User = require("../models/User");
 const EmergencyContact = require("../models/EmergencyContact");
 const CheckinSchedule = require("../models/CheckinSchedule");
 const Alert = require("../models/Alert");
+const Subscription = require("../models/subscription");
+const CreditTransaction = require("../models/creditTransaction");
+const PushLog = require("../models/PushLog"); // if exists
+const SmsConsent = require("../models/SmsConsent");
+
+
 
 // 1️⃣ Update profile (name)
 
@@ -77,19 +83,89 @@ exports.updateLocation = async (req, res) => {
   res.json({ message: "Location updated" });
 };
 
+exports.saveDeviceToken = async (req, res) => {
+  try {
+
+    const userId = req.user.userId;
+    const { deviceToken } = req.body;
+
+    if (!deviceToken) {
+      return res.status(400).json({ message: "Device token required" });
+    }
+
+    await User.findByIdAndUpdate(userId, {
+      deviceToken
+    });
+
+    res.json({ message: "Device token saved" });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+exports.updateSmsConsent = async (req, res) => {
+  try {
+
+    const userId = req.user.userId;
+    const { consent } = req.body;
+
+    let record = await SmsConsent.findOne({ userId });
+
+    if (!record) {
+      record = await SmsConsent.create({
+        userId,
+        consentGiven: consent,
+        consentGivenAt: consent ? new Date() : null,
+        consentRevokedAt: !consent ? new Date() : null
+      });
+    } else {
+      record.consentGiven = consent;
+      record.consentGivenAt = consent ? new Date() : record.consentGivenAt;
+      record.consentRevokedAt = !consent ? new Date() : null;
+      await record.save();
+    }
+
+    res.json({ message: "SMS consent updated" });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+exports.logoutUser = async (req, res) => {
+  await User.findByIdAndUpdate(req.user.userId, {
+    deviceToken: null
+  });
+
+  res.json({ message: "Logged out successfully" });
+};
+
 
 exports.deleteAccount = async (req, res) => {
-  const userId = req.user.userId;
+  try {
 
-  // 1️⃣ Delete related data
-  await EmergencyContact.deleteMany({ userId });
-  await CheckinSchedule.deleteMany({ userId });
-  await Alert.deleteMany({ userId });
+    const userId = req.user.userId;
 
-  // 2️⃣ Delete user
-  await User.findByIdAndDelete(userId);
+    // 1️⃣ Delete related data
+    await EmergencyContact.deleteMany({ userId });
+    await CheckinSchedule.deleteMany({ userId });
+    await Alert.deleteMany({ userId });
+    await Subscription.deleteMany({ userId });
+    await CreditTransaction.deleteMany({ userId });
+    await PushLog.deleteMany({ userId }); // optional
 
-  res.json({
-    message: "Account deleted successfully",
-  });
+    // 2️⃣ Delete user
+    await User.findByIdAndDelete(userId);
+
+    res.json({
+      message: "Account deleted permanently",
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
+

@@ -8,6 +8,9 @@ const {
   getProfile,
   updateLocation,
    deleteAccount ,
+   saveDeviceToken,
+   logoutUser,
+   updateSmsConsent
 } = require("../controllers/user.controller");
 
 // 🔹 Profile
@@ -19,6 +22,10 @@ router.put("/preferences", auth, updatePreferences);
 
 // 🔹 Location
 router.post("/location", auth, updateLocation);
+router.post("/device-token", auth, saveDeviceToken);
+router.post("/sms-consent", auth, updateSmsConsent);
+router.post("/signout", auth, logoutUser);
 router.delete("/", auth, deleteAccount);
+
 
 module.exports = router;

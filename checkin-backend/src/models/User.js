@@ -22,8 +22,22 @@ profileLocation: String,
     lng: Number,
     updatedAt: Date,
   },
-  
+
+  // subscription related
+  subscriptionStatus: {
+    type: String,
+    enum: ["ACTIVE", "EXPIRED", "NONE"],
+    default: "NONE",
   },
+
+
+  deviceToken: {
+    type: String,
+  },
+
+ },
+
+ 
   
   { timestamps: true }
 );

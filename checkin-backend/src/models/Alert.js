@@ -10,7 +10,17 @@ const alertSchema = new mongoose.Schema({
   },
   language: String,
   alertVoice: String,
-  status: { type: String, default: "CREATED" },
+  status: {
+    type: String,
+    enum: ["CREATED", "SMS_PENDING", "SMS_SENT", "FAILED"],
+    default: "CREATED"
+  },
+  creditsUsed: Number,
+  retryCount: { type: Number, default: 0 },
+nextRetryAt: Date,
+lastAttemptAt: Date,
+failureReason: String,
+  
 }, { timestamps: true });
 
 module.exports = mongoose.model("Alert", alertSchema);

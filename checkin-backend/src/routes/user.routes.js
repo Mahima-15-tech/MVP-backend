@@ -10,7 +10,8 @@ const {
    deleteAccount ,
    saveDeviceToken,
    logoutUser,
-   updateSmsConsent
+   updateSmsConsent,
+   saveEmail
 } = require("../controllers/user.controller");
 
 // 🔹 Profile
@@ -19,7 +20,7 @@ router.put("/profile", auth, updateProfile);
 
 // 🔹 Preferences
 router.put("/preferences", auth, updatePreferences);
-
+router.post("/email", auth, saveEmail);
 // 🔹 Location
 router.post("/location", auth, updateLocation);
 router.post("/device-token", auth, saveDeviceToken);

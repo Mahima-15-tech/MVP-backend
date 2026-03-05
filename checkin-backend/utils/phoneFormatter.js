@@ -1,30 +1,28 @@
 const { parsePhoneNumberFromString } = require("libphonenumber-js");
 
-exports.formatPhone = (phone) => {
+function formatPhone(countryCode, phone) {
+
+  if (!phone || !countryCode) return null;
+
   try {
 
-    if (!phone) return null;
+    const fullNumber = `${countryCode}${phone}`;
 
-    // remove spaces, brackets, dashes
-    phone = phone
-      .toString()
-      .replace(/\s+/g, "")
-      .replace(/-/g, "")
-      .replace(/\(/g, "")
-      .replace(/\)/g, "");
+    const parsed = parsePhoneNumberFromString(fullNumber);
 
-    // parse phone
-    const phoneNumber = parsePhoneNumberFromString(phone, "SG"); 
-    // default country Singapore
-
-    if (!phoneNumber || !phoneNumber.isValid()) {
-      return null;
+    // agar parse ho gaya to formatted return karo
+    if (parsed) {
+      return parsed.number;
     }
 
-    // return international format
-    return phoneNumber.number;
+    // agar parse fail ho jaye to bhi raw number return karo
+    return fullNumber;
 
-  } catch (err) {
-    return null;
+  } catch (error) {
+
+    // fallback
+    return `${countryCode}${phone}`;
   }
-};
+}
+
+module.exports = { formatPhone };

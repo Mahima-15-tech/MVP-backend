@@ -41,6 +41,33 @@ exports.updateProfile = async (req, res) => {
   });
 };
 
+exports.saveEmail = async (req, res) => {
+  try {
+
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        message: "Email is required"
+      });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user.userId,
+      { email },
+      { new: true }
+    );
+
+    res.json({
+      message: "Email saved successfully",
+      user
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 
 // 2️⃣ Update preferences (language + voice)
 exports.updatePreferences = async (req, res) => {

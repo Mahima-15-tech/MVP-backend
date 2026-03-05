@@ -3,28 +3,29 @@ const jwt = require("jsonwebtoken");
 const PhoneRegistry = require("../models/PhoneRegistry");
 const { formatPhone } = require("../../utils/phoneFormatter");
 
+
+
 exports.sendOtp = async (req, res) => {
 
   let { phone, countryCode } = req.body;
 
-  // combine
-  let fullPhone = phone;
-
-  if (countryCode) {
-    fullPhone = countryCode + phone;
+  // basic validation
+  if (!phone || !countryCode) {
+    return res.status(400).json({
+      message: "Phone and country code are required"
+    });
   }
 
-  const formattedPhone = formatPhone(fullPhone);
+  const formattedPhone = formatPhone(countryCode, phone);
 
   if (!formattedPhone) {
     return res.status(400).json({
-      message: "Invalid phone number format"
+      message: "Invalid phone number"
     });
   }
 
   const phoneNumber = formattedPhone;
 
-  // Check registry
   let registry = await PhoneRegistry.findOne({ phone: phoneNumber });
 
   if (registry && registry.isBanned) {
@@ -47,20 +48,20 @@ exports.sendOtp = async (req, res) => {
     message: "OTP sent (dummy)",
     otp: "123456"
   });
-
 };
+
 
 exports.verifyOtp = async (req, res) => {
 
   let { phone, countryCode, otp } = req.body;
 
-  let fullPhone = phone;
-
-  if (countryCode) {
-    fullPhone = countryCode + phone;
+  if (!phone || !countryCode) {
+    return res.status(400).json({
+      message: "Phone and country code are required"
+    });
   }
 
-  const formattedPhone = formatPhone(fullPhone);
+  const formattedPhone = formatPhone(countryCode, phone);
 
   if (!formattedPhone) {
     return res.status(400).json({
@@ -71,7 +72,9 @@ exports.verifyOtp = async (req, res) => {
   const phoneNumber = formattedPhone;
 
   if (otp !== "123456") {
-    return res.status(400).json({ message: "Invalid OTP" });
+    return res.status(400).json({
+      message: "Invalid OTP"
+    });
   }
 
   const user = await User.findOneAndUpdate(
@@ -81,7 +84,9 @@ exports.verifyOtp = async (req, res) => {
   );
 
   if (!user) {
-    return res.status(404).json({ message: "User not found" });
+    return res.status(404).json({
+      message: "User not found"
+    });
   }
 
   if (user.isBanned) {
@@ -97,4 +102,5 @@ exports.verifyOtp = async (req, res) => {
   );
 
   res.json({ token, user });
+
 };

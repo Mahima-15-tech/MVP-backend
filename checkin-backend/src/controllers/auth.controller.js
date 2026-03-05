@@ -5,9 +5,16 @@ const { formatPhone } = require("../../utils/phoneFormatter");
 
 exports.sendOtp = async (req, res) => {
 
-  let { phone } = req.body;
+  let { phone, countryCode } = req.body;
 
-  const formattedPhone = formatPhone(phone);
+  // combine
+  let fullPhone = phone;
+
+  if (countryCode) {
+    fullPhone = countryCode + phone;
+  }
+
+  const formattedPhone = formatPhone(fullPhone);
 
   if (!formattedPhone) {
     return res.status(400).json({
@@ -15,10 +22,10 @@ exports.sendOtp = async (req, res) => {
     });
   }
 
-  phone = formattedPhone;
+  const phoneNumber = formattedPhone;
 
   // Check registry
-  let registry = await PhoneRegistry.findOne({ phone });
+  let registry = await PhoneRegistry.findOne({ phone: phoneNumber });
 
   if (registry && registry.isBanned) {
     return res.status(403).json({
@@ -27,26 +34,33 @@ exports.sendOtp = async (req, res) => {
   }
 
   if (!registry) {
-    registry = await PhoneRegistry.create({ phone });
+    registry = await PhoneRegistry.create({ phone: phoneNumber });
   }
 
-  let user = await User.findOne({ phone });
+  let user = await User.findOne({ phone: phoneNumber });
 
   if (!user) {
-    user = await User.create({ phone });
+    user = await User.create({ phone: phoneNumber });
   }
 
   res.json({
     message: "OTP sent (dummy)",
     otp: "123456"
   });
+
 };
 
 exports.verifyOtp = async (req, res) => {
 
-  let { phone, otp } = req.body;
+  let { phone, countryCode, otp } = req.body;
 
-  const formattedPhone = formatPhone(phone);
+  let fullPhone = phone;
+
+  if (countryCode) {
+    fullPhone = countryCode + phone;
+  }
+
+  const formattedPhone = formatPhone(fullPhone);
 
   if (!formattedPhone) {
     return res.status(400).json({
@@ -54,14 +68,14 @@ exports.verifyOtp = async (req, res) => {
     });
   }
 
-  phone = formattedPhone;
+  const phoneNumber = formattedPhone;
 
   if (otp !== "123456") {
     return res.status(400).json({ message: "Invalid OTP" });
   }
 
   const user = await User.findOneAndUpdate(
-    { phone },
+    { phone: phoneNumber },
     { isVerified: true },
     { new: true }
   );

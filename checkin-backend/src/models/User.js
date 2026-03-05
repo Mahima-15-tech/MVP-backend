@@ -30,6 +30,12 @@ profileLocation: String,
     default: "NONE",
   },
 
+  isBanned: {
+    type: Boolean,
+    default: false
+  },
+  banReason: String,
+  bannedAt: Date,
 
   deviceToken: {
     type: String,

@@ -6,11 +6,12 @@ const CreditTransaction = require("../../models/creditTransaction");
 exports.getDashboardSummary = async (req, res) => {
   try {
 
+
     const todayStart = new Date();
     todayStart.setHours(0,0,0,0);
 
     const [
-      totalUsers,
+      totalUsers, 
       activeSubscriptions,
       alertsToday,
       failedSMS,
@@ -38,18 +39,60 @@ exports.getDashboardSummary = async (req, res) => {
         {
           $group: {
             _id: null,
-            total: { $sum: "$amount" }
+            total: { $sum: { $abs: "$amount" } }
           }
         }
       ])
     ]);
 
+    const [missedToday, sosToday] = await Promise.all([
+      Alert.countDocuments({
+        type: "MISSED_CHECKIN",
+        createdAt: { $gte: todayStart }
+      }),
+      Alert.countDocuments({
+        type: "SOS",
+        createdAt: { $gte: todayStart }
+      })
+    ]);
+
+   // Plan distribution (ACTIVE only)
+const planCounts = await Subscription.aggregate([
+  { $match: { status: "ACTIVE" } },
+  {
+    $group: {
+      _id: "$planType",
+      count: { $sum: 1 }
+    }
+  }
+]);
+
+let freeTrialUsers = 0;
+let monthlyUsers = 0;
+let yearlyUsers = 0;
+
+planCounts.forEach(plan => {
+  if (plan._id === "TRIAL") {
+    freeTrialUsers = plan.count;
+  }
+  if (plan._id === "MONTHLY") {
+    monthlyUsers = plan.count;
+  }
+  if (plan._id === "YEARLY") {
+    yearlyUsers = plan.count;
+  }
+});
     res.json({
       totalUsers,
       activeSubscriptions,
       alertsToday,
       failedSMS,
       retryInProgress,
+      missedToday,
+      freeTrialUsers,
+monthlyUsers,
+yearlyUsers,
+sosToday,
       creditsUsedToday: creditsUsedToday[0]?.total || 0
     });
 
@@ -57,3 +100,4 @@ exports.getDashboardSummary = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+

@@ -1,11 +1,23 @@
 const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 const PhoneRegistry = require("../models/PhoneRegistry");
+const { formatPhone } = require("../../utils/phoneFormatter");
 
 exports.sendOtp = async (req, res) => {
-  const { phone } = req.body;
 
-  // 1️⃣ Check registry
+  let { phone } = req.body;
+
+  const formattedPhone = formatPhone(phone);
+
+  if (!formattedPhone) {
+    return res.status(400).json({
+      message: "Invalid phone number format"
+    });
+  }
+
+  phone = formattedPhone;
+
+  // Check registry
   let registry = await PhoneRegistry.findOne({ phone });
 
   if (registry && registry.isBanned) {
@@ -14,38 +26,38 @@ exports.sendOtp = async (req, res) => {
     });
   }
 
-  // 2️⃣ If registry not exist → create
   if (!registry) {
     registry = await PhoneRegistry.create({ phone });
   }
 
-  // 3️⃣ Create user only if not exists
   let user = await User.findOne({ phone });
+
   if (!user) {
     user = await User.create({ phone });
   }
 
   res.json({
     message: "OTP sent (dummy)",
-    otp: "123456",
+    otp: "123456"
   });
 };
 
-
 exports.verifyOtp = async (req, res) => {
-  const { phone, otp } = req.body;
+
+  let { phone, otp } = req.body;
+
+  const formattedPhone = formatPhone(phone);
+
+  if (!formattedPhone) {
+    return res.status(400).json({
+      message: "Invalid phone number"
+    });
+  }
+
+  phone = formattedPhone;
 
   if (otp !== "123456") {
     return res.status(400).json({ message: "Invalid OTP" });
-  }
-
-  // 1️⃣ Check registry
-  const registry = await PhoneRegistry.findOne({ phone });
-
-  if (registry && registry.isBanned) {
-    return res.status(403).json({
-      message: "Your account has been banned."
-    });
   }
 
   const user = await User.findOneAndUpdate(
@@ -54,15 +66,9 @@ exports.verifyOtp = async (req, res) => {
     { new: true }
   );
 
-
-
-  const token = jwt.sign(
-    { userId: user._id },
-    process.env.JWT_SECRET
-  );
-
-
-  res.json({ token, user });
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+  }
 
   if (user.isBanned) {
     return res.status(403).json({
@@ -70,4 +76,11 @@ exports.verifyOtp = async (req, res) => {
       reason: user.banReason
     });
   }
+
+  const token = jwt.sign(
+    { userId: user._id },
+    process.env.JWT_SECRET
+  );
+
+  res.json({ token, user });
 };

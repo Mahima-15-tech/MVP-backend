@@ -4,6 +4,9 @@ const Alert = require("../../models/Alert");
 const CreditTransaction = require("../../models/creditTransaction");
 const CheckinSchedule = require("../../models/CheckinSchedule");
 const EmergencyContact = require("../../models/EmergencyContact");
+const AdminNote = require("../../models/AdminNote");
+const SubscriptionHistory = require("../../models/SubscriptionHistory");
+const ContactHistory = require("../../models/ContactHistory");
 
 exports.getUserDetail = async (req, res) => {
   try {
@@ -33,8 +36,23 @@ exports.getUserDetail = async (req, res) => {
       .find({ userId })
       .sort({ createdAt: -1 })
       .limit(5);
+    
+    
+      const adminNotes = await AdminNote
+      .find({ userId })
+      .populate("adminId", "name email")
+      .sort({ createdAt: -1 });
+
+      const subscriptionHistory = await SubscriptionHistory
+  .find({ userId })
+  .sort({ createdAt: -1 });
 
     const contacts = await EmergencyContact.find({ userId });
+
+    const contactHistory = await ContactHistory
+    .find({ userId })
+    .sort({ createdAt: -1 });
+
 
     res.json({
       basicInfo: user,
@@ -43,7 +61,10 @@ exports.getUserDetail = async (req, res) => {
       creditHistory,
       checkin,
       recentAlerts: alerts,
+      adminNotes,
+      subscriptionHistory,
       contacts,
+      contactHistory,
       contactsCount: contacts.length
     });
 
@@ -51,3 +72,93 @@ exports.getUserDetail = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+
+exports.addAdminNote = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { note } = req.body;
+
+    const newNote = await AdminNote.create({
+      userId,
+      adminId: req.admin.adminId,
+      note
+    });
+
+    res.json({ message: "Note added", newNote });
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.adjustUserCredits = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { amount, reason } = req.body;
+
+    if (!amount) {
+      return res.status(400).json({ message: "Amount required" });
+    }
+
+    const latest = await CreditTransaction
+      .findOne({ userId })
+      .sort({ createdAt: -1 });
+
+    const currentBalance = latest?.balanceAfter || 0;
+
+    const newBalance = currentBalance + amount;
+
+    if (newBalance < 0) {
+      return res.status(400).json({ message: "Insufficient balance" });
+    }
+
+    const transaction = await CreditTransaction.create({
+      userId,
+      type: amount > 0 ? "ADD" : "DEDUCT",
+      reason: reason || "ADMIN_ADJUSTMENT",
+      amount: Math.abs(amount),
+      balanceAfter: newBalance,
+      adminId: req.admin.adminId,
+    });
+
+    res.json({
+      message: "Credits adjusted successfully",
+      transaction
+    });
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.toggleUserCheckin = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const schedule = await CheckinSchedule.findOne({ userId });
+
+    if (!schedule) {
+      return res.status(404).json({ message: "Check-in schedule not found" });
+    }
+
+    if (schedule.status === "PAUSED") {
+      schedule.status = "ACTIVE";
+      schedule.lastCheckInAt = null;   // 🔥 VERY IMPORTANT
+    } else {
+      schedule.status = "PAUSED";
+    }
+
+    await schedule.save();
+
+    res.json({
+      message: "Check-in status updated",
+      status: schedule.status
+    });
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+

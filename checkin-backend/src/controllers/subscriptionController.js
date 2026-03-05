@@ -2,6 +2,7 @@ const Subscription = require("../models/subscription");
 const User = require("../models/User");
 const { addCredits,  getUserBalance } = require("../services/creditService");
 const PhoneRegistry = require("../models/PhoneRegistry");
+const SubscriptionHistory = require("../models/SubscriptionHistory");
 
 exports.startFreeTrial = async (req, res) => {
   try {
@@ -70,50 +71,64 @@ exports.startFreeTrial = async (req, res) => {
 
 
 exports.purchasePlan = async (req, res) => {
-    try {
-        const userId = req.user.userId;
+  try {
+    const userId = req.user.userId;
+    const { planType } = req.body;
 
-      const { planType } = req.body;
-  
-      let durationDays;
-      let credits;
-  
-      if (planType === "MONTHLY") {
-        durationDays = 30;
-        credits = 3;
-      } else if (planType === "YEARLY") {
-        durationDays = 365;
-        credits = 36;
-      } else {
-        return res.status(400).json({ message: "Invalid plan" });
-      }
-  
-      const startDate = new Date();
-      const endDate = new Date();
-      endDate.setDate(endDate.getDate() + durationDays);
-  
-      await Subscription.create({
-        userId,
-        planType,
-        startDate,
-        endDate,
-        nextRenewalDate: endDate,
-        creditsPerCycle: credits,
-        autoRenew: true,
-      });
-  
-      await User.findByIdAndUpdate(userId, {
-        subscriptionStatus: "ACTIVE",
-      });
-  
-      await addCredits(userId, credits, "TOPUP");
-  
-      res.json({ message: "Subscription activated" });
-  
-    } catch (error) {
-      res.status(500).json({ message: error.message });
+    let durationDays;
+    let credits;
+
+    if (planType === "MONTHLY") {
+      durationDays = 30;
+      credits = 3;
+    } else if (planType === "YEARLY") {
+      durationDays = 365;
+      credits = 36;
+    } else {
+      return res.status(400).json({ message: "Invalid plan" });
     }
-  };
+
+    const startDate = new Date();
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + durationDays);
+
+    let sub = await Subscription.findOne({ userId });
+
+    if (!sub) {
+      return res.status(400).json({ message: "No existing subscription found" });
+    }
+
+    // 🔥 CREATE HISTORY
+    await SubscriptionHistory.create({
+      userId,
+      previousPlan: sub.planType,
+      newPlan: planType,
+      changedBy: "USER"
+    });
+
+    // 🔥 UPDATE SUB
+    sub.planType = planType;
+    sub.startDate = startDate;
+    sub.endDate = endDate;
+    sub.nextRenewalDate = endDate;
+    sub.creditsPerCycle = credits;
+    sub.autoRenew = true;
+    sub.status = "ACTIVE";
+
+    await sub.save();
+
+    await User.findByIdAndUpdate(userId, {
+      subscriptionStatus: "ACTIVE",
+    });
+
+    await addCredits(userId, credits, "TOPUP");
+
+    res.json({ message: "Subscription activated" });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
   
 
   exports.getSubscriptionStatus = async (req, res) => {
@@ -121,7 +136,7 @@ exports.purchasePlan = async (req, res) => {
   
       const userId = req.user.userId;
   
-      const sub = await Subscription.findOne({ userId });
+      const sub = await Subscription.findOne({ userId }).sort({ createdAt: -1 });
   
       if (!sub) {
         return res.json({

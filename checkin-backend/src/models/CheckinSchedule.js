@@ -7,8 +7,17 @@ const checkinSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    checkInTime: { type: String, required: true }, // "09:00"
-    graceMinutes: { type: Number, default: 1 },
+    checkInTimes: [
+      {
+        type: String   // "09:00"
+      }
+    ],
+  
+    graceMinutes: { 
+      type: Number, 
+      default: 120 
+    },
+
     lastCheckInAt: { type: Date },
     status: {
       type: String,

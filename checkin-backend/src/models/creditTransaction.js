@@ -24,11 +24,16 @@ const creditTransactionSchema = new mongoose.Schema({
       "ADMIN_ADJUSTMENT"
     ],
   },
+
   
 
   amount: { type: Number, required: true },
 
   balanceAfter: Number,
+  adjustedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Admin"
+  },
 
 }, { timestamps: true });
 

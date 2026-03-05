@@ -2,7 +2,7 @@ async function sendSMS(phone, message) {
     console.log("📨 Sending SMS to:", phone);
   
     // simulate random success/fail
-    const success = true;
+    const success = Math.random() > 0.5;
   
     if (success) {
       console.log("✅ SMS Sent");

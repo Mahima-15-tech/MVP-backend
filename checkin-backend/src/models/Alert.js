@@ -6,6 +6,7 @@ const alertSchema = new mongoose.Schema({
   location: {
     lat: Number,
     lng: Number,
+    address: String,
     updatedAt: Date,
   },
   language: String,
@@ -20,6 +21,16 @@ const alertSchema = new mongoose.Schema({
 nextRetryAt: Date,
 lastAttemptAt: Date,
 failureReason: String,
+smsDetails: [
+  {
+    contactId: { type: mongoose.Schema.Types.ObjectId, ref: "EmergencyContact" },
+    status: String,
+    retryCount: Number,
+    lastAttemptAt: Date,
+    failureReason: String
+  }
+],
+
   
 }, { timestamps: true });
 

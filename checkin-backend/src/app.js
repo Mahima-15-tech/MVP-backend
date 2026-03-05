@@ -10,6 +10,7 @@ const adminRoutes = require("./routes/admin/admin.routes");
 const subscriptionRoutes = require("./routes/subscriptionRoutes");
 const webhookRoutes = require("./routes/webhookRoutes");
 const creditRoutes = require("./routes/creditRoutes");
+const supportRoutes = require("./routes/support.routes");
 
 
 const app = express();
@@ -27,7 +28,8 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/subscription", subscriptionRoutes);
 app.use("/api/webhook", webhookRoutes);
 app.use("/api/credits", creditRoutes);
-
+app.use("/api/support", supportRoutes);
+console.log("Support route loaded");
 
 
 

@@ -52,6 +52,16 @@ exports.saveEmail = async (req, res) => {
       });
     }
 
+    // check if email already exists for another user
+    const existingEmail = await User.findOne({ email });
+
+    if (existingEmail && existingEmail._id.toString() !== req.user.userId) {
+      return res.json({
+        status: 2,
+        message: "Email already exists"
+      });
+    }
+
     const user = await User.findByIdAndUpdate(
       req.user.userId,
       { email },
@@ -59,6 +69,7 @@ exports.saveEmail = async (req, res) => {
     );
 
     res.json({
+      status: 1,
       message: "Email saved successfully",
       user
     });

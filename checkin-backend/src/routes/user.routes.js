@@ -11,7 +11,9 @@ const {
    saveDeviceToken,
    logoutUser,
    updateSmsConsent,
-   saveEmail
+   saveEmail,
+   saveName
+   
 } = require("../controllers/user.controller");
 
 // 🔹 Profile
@@ -21,6 +23,7 @@ router.put("/profile", auth, updateProfile);
 // 🔹 Preferences
 router.put("/preferences", auth, updatePreferences);
 router.post("/email", auth, saveEmail);
+router.post("/save-name", auth, saveName);
 // 🔹 Location
 router.post("/location", auth, updateLocation);
 router.post("/device-token", auth, saveDeviceToken);

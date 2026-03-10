@@ -8,12 +8,22 @@ const userSchema = new mongoose.Schema(
   name: {
     type: String,
   },
+
+  
+  nameCompleted: {
+    type: Boolean,
+    default: false
+  },
   age: Number,
 gender: {
   type: String,
   enum: ["Male", "Female", "Other"],
 },
 email: String,
+emailCompleted: {
+  type: Boolean,
+  default: false
+},
 profileLocation: String,
   language: { type: String, default: "en" },
   alertVoice: { type: String, default: "female_soft" },

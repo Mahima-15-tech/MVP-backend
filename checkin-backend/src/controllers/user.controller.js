@@ -41,6 +41,7 @@ exports.updateProfile = async (req, res) => {
   });
 };
 
+
 exports.saveEmail = async (req, res) => {
   try {
 
@@ -52,7 +53,6 @@ exports.saveEmail = async (req, res) => {
       });
     }
 
-    // check if email already exists for another user
     const existingEmail = await User.findOne({ email });
 
     if (existingEmail && existingEmail._id.toString() !== req.user.userId) {
@@ -64,13 +64,20 @@ exports.saveEmail = async (req, res) => {
 
     const user = await User.findByIdAndUpdate(
       req.user.userId,
-      { email },
+      {
+        email,
+        emailCompleted: true
+      },
       { new: true }
     );
 
     res.json({
       status: 1,
       message: "Email saved successfully",
+      onboarding: {
+        emailCompleted: user.emailCompleted,
+        nameCompleted: user.nameCompleted
+      },
       user
     });
 
@@ -79,6 +86,40 @@ exports.saveEmail = async (req, res) => {
   }
 };
 
+exports.saveName = async (req, res) => {
+  try {
+
+    const { name } = req.body;
+
+    if (!name) {
+      return res.status(400).json({
+        message: "Name is required"
+      });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user.userId,
+      {
+        name,
+        nameCompleted: true
+      },
+      { new: true }
+    );
+
+    res.json({
+      status: 1,
+      message: "Name saved successfully",
+      onboarding: {
+        emailCompleted: user.emailCompleted,
+        nameCompleted: user.nameCompleted
+      },
+      user
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
 // 2️⃣ Update preferences (language + voice)
 exports.updatePreferences = async (req, res) => {

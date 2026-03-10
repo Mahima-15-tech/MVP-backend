@@ -101,6 +101,14 @@ exports.verifyOtp = async (req, res) => {
     process.env.JWT_SECRET
   );
 
-  res.json({ token, user });
+  res.json({
+    status: 1,
+    token,
+    onboarding: {
+      emailCompleted: user.emailCompleted,
+      nameCompleted: user.nameCompleted
+    },
+    user
+  });
 
 };

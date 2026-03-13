@@ -27,6 +27,9 @@ exports.updateProfile = async (req, res) => {
 
     const updateData = {};
 
+    // current user fetch
+    const user = await User.findById(userId);
+
     /* -------- NAME -------- */
 
     if (name !== undefined) {
@@ -73,12 +76,17 @@ exports.updateProfile = async (req, res) => {
 
     if (email !== undefined) {
 
-      const existingEmail = await User.findOne({ email });
+      // agar email change hua hai tab hi check karo
+      if (user.email !== email) {
 
-      if (existingEmail && existingEmail._id.toString() !== userId) {
-        return res.status(400).json({
-          message: "Email already exists"
-        });
+        const existingEmail = await User.findOne({ email });
+
+        if (existingEmail) {
+          return res.status(400).json({
+            message: "Email already exists"
+          });
+        }
+
       }
 
       updateData.email = email;
@@ -99,7 +107,7 @@ exports.updateProfile = async (req, res) => {
 
     /* -------- UPDATE USER -------- */
 
-    const user = await User.findByIdAndUpdate(
+    const updatedUser = await User.findByIdAndUpdate(
       userId,
       { $set: updateData },
       { new: true }
@@ -107,7 +115,7 @@ exports.updateProfile = async (req, res) => {
 
     res.json({
       message: "Profile updated successfully",
-      user
+      user: updatedUser
     });
 
   } catch (error) {

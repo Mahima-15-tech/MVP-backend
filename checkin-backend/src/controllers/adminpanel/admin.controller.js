@@ -28,64 +28,109 @@ exports.getDashboardStats = async (req, res) => {
 exports.getUsers = async (req, res) => {
   try {
 
-    const users = await User.find().sort({ createdAt: -1 });
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || "";
+    const from = req.query.from;
+    const to = req.query.to;
 
-    const enrichedUsers = await Promise.all(
-      users.map(async (user) => {
+    const skip = (page - 1) * limit;
 
-        const subscription = await Subscription.findOne({
-          userId: user._id,
-          status: "ACTIVE"
-        });
+    let filter = {};
 
-        const latestCredit = await CreditTransaction
-          .findOne({ userId: user._id })
-          .sort({ createdAt: -1 });
+    /* -------- SEARCH -------- */
 
-        const checkin = await CheckinSchedule.findOne({
-          userId: user._id
-        });
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { phone: { $regex: search, $options: "i" } }
+      ];
+    }
 
-        const alertsCount = await Alert.countDocuments({
-          userId: user._id
-        });
+    /* -------- DATE FILTER -------- */
 
-        return {
-          _id: user._id,
-          name: user.name,
-          phone: user.phone,
-          createdAt: user.createdAt,
+    if (from && to) {
+      filter.createdAt = {
+        $gte: new Date(from),
+        $lte: new Date(to + "T23:59:59.999Z")
+      };
+    }
 
-          isBanned: user.isBanned,
-          status: user.isBanned ? "banned" : "active",
+    /* -------- USERS -------- */
 
-          subscription: subscription
-            ? {
-                planType: subscription.planType,
-                status: subscription.status
-              }
-            : null,
+    const users = await User.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
 
-          currentBalance: latestCredit?.balanceAfter || 0,
+    const total = await User.countDocuments(filter);
 
-          checkin: checkin
-            ? {
-                checkInTimes: checkin.checkInTimes,
-                status: checkin.status
-              }
-            : null,
+    /* -------- SUBSCRIPTIONS -------- */
 
-          alertsCount
-        };
+    const userIds = users.map(u => u._id);
 
-      })
-    );
+    const subscriptions = await Subscription.find({
+      userId: { $in: userIds }
+    });
 
-    res.json(enrichedUsers);
+    const alerts = await Alert.aggregate([
+      {
+        $match: { userId: { $in: userIds } }
+      },
+      {
+        $group: {
+          _id: "$userId",
+          alerts: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const credits = await CreditTransaction.aggregate([
+      { $sort: { createdAt: -1 } },
+      {
+        $group: {
+          _id: "$userId",
+          balance: { $first: "$balanceAfter" }
+        }
+      }
+    ]);
+
+    const creditMap = {};
+    credits.forEach(c => creditMap[c._id] = c.balance);
+
+    const alertMap = {};
+    alerts.forEach(a => alertMap[a._id] = a.alerts);
+
+    const data = users.map(u => {
+
+      const subscription = subscriptions.find(s =>
+        s.userId.toString() === u._id.toString()
+      );
+
+      return {
+        userId: u.phone,
+        name: u.name,
+        joined: u.createdAt,
+        plan: subscription?.planType || "Trial",
+        renewal: subscription?.renewalDate || "-",
+        alertCredits: creditMap[u._id] || 0,
+        alertsSent: alertMap[u._id] || 0,
+        status: u.isBanned ? "Banned" : "Active"
+      };
+
+    });
+
+    res.json({
+      page,
+      limit,
+      total,
+      pages: Math.ceil(total / limit),
+      data
+    });
 
   } catch (error) {
-    console.error("Get users error:", error);
-    res.status(500).json({ message: "Failed to fetch users" });
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -100,6 +145,29 @@ exports.getAlerts = async (req, res) => {
     console.error("Get alerts error:", error);
     res.status(500).json({ message: "Failed to fetch alerts" });
   }
+};
+
+const { Parser } = require("json2csv");
+
+exports.exportUsersCSV = async (req, res) => {
+
+  const users = await User.find();
+
+  const fields = [
+    "name",
+    "phone",
+    "email",
+    "createdAt"
+  ];
+
+  const parser = new Parser({ fields });
+
+  const csv = parser.parse(users);
+
+  res.header("Content-Type", "text/csv");
+  res.attachment("users.csv");
+
+  return res.send(csv);
 };
     
 

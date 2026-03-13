@@ -17,7 +17,8 @@ const {
   getCheckinLogs,
   banUser,
   unbanUser,
-  exportFullUsersPDF
+  exportFullUsersPDF,
+  exportUsersCSV
 } = require("../../controllers/adminpanel/admin.controller");
 
 const {
@@ -84,6 +85,8 @@ router.get("/users/top-countries", adminAuth, getTopCountries);
 router.get("/users", adminAuth, getUsers);
 
 router.get("/users/:userId", adminAuth, getUserDetail);
+
+router.get("/users/export-csv", adminAuth, exportUsersCSV);
 
 router.get(
   "/users/export-full",

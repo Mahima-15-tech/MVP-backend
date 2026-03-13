@@ -8,9 +8,7 @@ const userSchema = new mongoose.Schema(
   name: {
     type: String,
   },
-
-  
-  nameCompleted: {
+nameCompleted: {
     type: Boolean,
     default: false
   },
@@ -24,8 +22,12 @@ emailCompleted: {
   type: Boolean,
   default: false
 },
+profileImage: {
+  type: String,
+  default: null
+},
 profileLocation: String,
-  language: { type: String, default: "en" },
+language: { type: String, default: "en" },
   alertVoice: { type: String, default: "female_soft" },
   lastKnownLocation: {
     lat: Number,

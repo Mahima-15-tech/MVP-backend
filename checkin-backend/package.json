@@ -21,6 +21,7 @@
     "jspdf-autotable": "^5.0.7",
     "libphonenumber-js": "^1.12.38",
     "mongoose": "^9.1.5",
+    "multer": "^2.1.1",
     "node-cron": "^4.2.1",
     "nodemailer": "^8.0.1",
     "pdfkit": "^0.17.2",

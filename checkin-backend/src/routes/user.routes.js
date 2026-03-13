@@ -15,10 +15,26 @@ const {
    saveName
    
 } = require("../controllers/user.controller");
+const upload = require("../middleware/uploadProfile");
+const { updateProfileImage } = require("../controllers/user.controller");
+
 
 // 🔹 Profile
 router.get("/profile", auth, getProfile);
-router.put("/profile", auth, updateProfile);
+// const upload = require("../middleware/uploadProfile");
+
+router.put(
+  "/profile",
+  auth,
+  upload.single("image"),
+  updateProfile
+);
+// router.post(
+//   "/profile-image",
+//   auth,
+//   upload.single("image"),
+//   updateProfileImage
+// );
 
 // 🔹 Preferences
 router.put("/preferences", auth, updatePreferences);

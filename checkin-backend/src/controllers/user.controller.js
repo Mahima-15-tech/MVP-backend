@@ -13,32 +13,136 @@ const SmsConsent = require("../models/SmsConsent");
 
 
 exports.updateProfile = async (req, res) => {
-  const {
-    name,
-    age,
-    gender,
-    email,
-    profileLocation,
-  } = req.body;
+  try {
 
-  const user = await User.findByIdAndUpdate(
-    req.user.userId,
-    {
-      $set: {
-        ...(name && { name }),
-        ...(age !== undefined && { age }),
-        ...(gender && { gender }),
-        ...(email && { email }),
-        ...(profileLocation && { profileLocation }),
-      },
-    },
-    { new: true }
-  );
+    const userId = req.user.userId;
 
-  res.json({
-    message: "Profile updated",
-    user,
-  });
+    const {
+      name,
+      age,
+      gender,
+      email,
+      profileLocation
+    } = req.body;
+
+    const updateData = {};
+
+    /* -------- NAME -------- */
+
+    if (name !== undefined) {
+
+      if (name.trim().length < 2) {
+        return res.status(400).json({
+          message: "Name must be at least 2 characters"
+        });
+      }
+
+      updateData.name = name;
+      updateData.nameCompleted = true;
+    }
+
+    /* -------- AGE -------- */
+
+    if (age !== undefined) {
+
+      if (age < 0 || age > 120) {
+        return res.status(400).json({
+          message: "Invalid age"
+        });
+      }
+
+      updateData.age = age;
+    }
+
+    /* -------- GENDER -------- */
+
+    if (gender !== undefined) {
+
+      const allowed = ["Male", "Female", "Other"];
+
+      if (!allowed.includes(gender)) {
+        return res.status(400).json({
+          message: "Invalid gender"
+        });
+      }
+
+      updateData.gender = gender;
+    }
+
+    /* -------- EMAIL -------- */
+
+    if (email !== undefined) {
+
+      const existingEmail = await User.findOne({ email });
+
+      if (existingEmail && existingEmail._id.toString() !== userId) {
+        return res.status(400).json({
+          message: "Email already exists"
+        });
+      }
+
+      updateData.email = email;
+      updateData.emailCompleted = true;
+    }
+
+    /* -------- LOCATION -------- */
+
+    if (profileLocation !== undefined) {
+      updateData.profileLocation = profileLocation;
+    }
+
+    /* -------- PROFILE IMAGE -------- */
+
+    if (req.file) {
+      updateData.profileImage = `/uploads/profile/${req.file.filename}`;
+    }
+
+    /* -------- UPDATE USER -------- */
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { $set: updateData },
+      { new: true }
+    );
+
+    res.json({
+      message: "Profile updated successfully",
+      user
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      message: error.message
+    });
+  }
+};
+
+exports.updateProfileImage = async (req, res) => {
+  try {
+
+    if (!req.file) {
+      return res.status(400).json({
+        message: "Image required"
+      });
+    }
+
+    const imageUrl = `/uploads/profile/${req.file.filename}`;
+
+    const user = await User.findByIdAndUpdate(
+      req.user.userId,
+      { profileImage: imageUrl },
+      { new: true }
+    );
+
+    res.json({
+      message: "Profile image updated",
+      profileImage: imageUrl,
+      user
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
 

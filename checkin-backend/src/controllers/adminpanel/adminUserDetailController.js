@@ -162,3 +162,167 @@ exports.toggleUserCheckin = async (req, res) => {
 };
 
 
+exports.getUsersDashboard = async (req, res) => {
+  try {
+
+    const totalUsers = await User.countDocuments();
+
+    const trialUsers = await Subscription.countDocuments({
+      planType: "TRIAL"
+    });
+
+    const activeSubscribers = await Subscription.countDocuments({
+      status: "ACTIVE"
+    });
+
+    const expiredCancelled = await Subscription.countDocuments({
+      status: { $in: ["EXPIRED", "CANCELLED"] }
+    });
+
+    const bannedUsers = await User.countDocuments({
+      isBanned: true
+    });
+
+    const pendingVerification = await User.countDocuments({
+      isVerified: false
+    });
+
+    const contactsAgg = await EmergencyContact.aggregate([
+      { $group: { _id: "$userId" } }
+    ]);
+
+    const usersWithContacts = contactsAgg.map(c => c._id);
+
+    const noContacts = await User.countDocuments({
+      _id: { $nin: usersWithContacts }
+    });
+
+    const latestCredits = await CreditTransaction.aggregate([
+      {
+        $sort: { createdAt: -1 }
+      },
+      {
+        $group: {
+          _id: "$userId",
+          balance: { $first: "$balanceAfter" }
+        }
+      }
+    ]);
+
+    const lowCredits = latestCredits.filter(c => c.balance < 2).length;
+
+    res.json({
+      totalUsers,
+      trialUsers,
+      activeSubscribers,
+      expiredCancelled,
+      bannedUsers,
+      pendingVerification,
+      noContacts,
+      lowCredits
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getUsersByRegion = async (req, res) => {
+  try {
+
+    const regions = await User.aggregate([
+      {
+        $group: {
+          _id: "$region",
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const result = {
+      APAC: 0,
+      EMEA: 0,
+      LATAM: 0,
+      OTHER: 0
+    };
+
+    regions.forEach(r => {
+      if (result[r._id] !== undefined) {
+        result[r._id] = r.count;
+      } else {
+        result.OTHER += r.count;
+      }
+    });
+
+    res.json(result);
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getTopCountries = async (req, res) => {
+  try {
+
+    const countries = await User.aggregate([
+      {
+        $group: {
+          _id: "$country",
+          users: { $sum: 1 }
+        }
+      },
+      {
+        $sort: { users: -1 }
+      },
+      {
+        $limit: 5
+      }
+    ]);
+
+    const formatted = countries.map(c => ({
+      country: c._id,
+      users: c.users
+    }));
+
+    res.json(formatted);
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getUsers = async (req, res) => {
+  try {
+
+    const users = await User.find()
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const subscriptions = await Subscription.find();
+
+    const credits = await CreditTransaction.aggregate([
+      { $sort: { createdAt: -1 } },
+      {
+        $group: {
+          _id: "$userId",
+          balance: { $first: "$balanceAfter" }
+        }
+      }
+    ]);
+
+    const creditMap = {};
+    credits.forEach(c => {
+      creditMap[c._id] = c.balance;
+    });
+
+    const result = users.map(u => ({
+      ...u,
+      currentBalance: creditMap[u._id] || 0
+    }));
+
+    res.json(result);
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

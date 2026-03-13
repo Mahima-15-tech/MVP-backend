@@ -17,6 +17,7 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use("/uploads", express.static("uploads"));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/checkin", checkinRoutes);
@@ -29,6 +30,7 @@ app.use("/api/subscription", subscriptionRoutes);
 app.use("/api/webhook", webhookRoutes);
 app.use("/api/credits", creditRoutes);
 app.use("/api/support", supportRoutes);
+
 console.log("Support route loaded");
 
 

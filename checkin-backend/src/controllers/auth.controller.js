@@ -2,7 +2,7 @@ const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 const PhoneRegistry = require("../models/PhoneRegistry");
 const { formatPhone } = require("../../utils/phoneFormatter");
-
+const getCountryRegion = require("../../utils/countryRegion");
 
 
 exports.sendOtp = async (req, res) => {
@@ -41,7 +41,15 @@ exports.sendOtp = async (req, res) => {
   let user = await User.findOne({ phone: phoneNumber });
 
   if (!user) {
-    user = await User.create({ phone: phoneNumber });
+
+    const { country, region } = getCountryRegion(phoneNumber);
+  
+    user = await User.create({
+      phone: phoneNumber,
+      country,
+      region
+    });
+  
   }
 
   res.json({

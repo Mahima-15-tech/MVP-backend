@@ -134,6 +134,268 @@ exports.getUsers = async (req, res) => {
   }
 };
 
+
+exports.getUsersDashboardUltra = async (req, res) => {
+  try {
+  
+  const page = parseInt(req.query.page) || 1
+  const limit = parseInt(req.query.limit) || 10
+  const skip = (page - 1) * limit
+  
+  const search = req.query.search || ""
+  
+  let match = {}
+  
+  if(search){
+  match.$or = [
+  { name:{ $regex:search,$options:"i"} },
+  { phone:{ $regex:search,$options:"i"} }
+  ]
+  }
+  
+  const usersPipeline = [
+  
+  { $match:match },
+  
+  { $sort:{ createdAt:-1 } },
+  
+  {
+  $lookup:{
+  from:"subscriptions",
+  localField:"_id",
+  foreignField:"userId",
+  as:"subscription"
+  }
+  },
+  
+  {
+  $lookup:{
+  from:"alerts",
+  localField:"_id",
+  foreignField:"userId",
+  as:"alerts"
+  }
+  },
+  
+  {
+  $lookup:{
+  from:"checkinschedules",
+  localField:"_id",
+  foreignField:"userId",
+  as:"checkins"
+  }
+  },
+  
+  {
+  $lookup:{
+  from:"credittransactions",
+  localField:"_id",
+  foreignField:"userId",
+  as:"credits"
+  }
+  },
+  
+  {
+  $addFields:{
+  
+  plan:{ $arrayElemAt:["$subscription.planType",0] },
+  
+  renewal:{ $arrayElemAt:["$subscription.nextRenewalDate",0] },
+  
+  alertsSent:{ $size:"$alerts" },
+  
+  lastAlertType:{ $arrayElemAt:["$alerts.type",-1] },
+  
+  checkinTimes:{ $arrayElemAt:["$checkins.checkInTimes",0] },
+  
+  alertCredits:{
+  $cond:[
+  { $gt:[{ $size:"$credits"},0] },
+  { $arrayElemAt:["$credits.balanceAfter",-1] },
+  0
+  ]
+  }
+  
+  }
+  
+  },
+  
+  {
+  $project:{
+  
+  userId:"$phone",
+  
+  name:1,
+  
+  joined:"$createdAt",
+  
+  plan:{
+  $cond:[
+  { $ifNull:["$plan",false] },
+  "$plan",
+  "NO PLAN"
+  ]
+  },
+  
+  renewal:1,
+  
+  alertCredits:1,
+  
+  checkinTimes:1,
+  
+  alertsSent:1,
+  
+  lastAlertType:1,
+  
+  status:{
+  $cond:[
+  { $eq:["$isBanned",true] },
+  "BANNED",
+  "ACTIVE"
+  ]
+  }
+  
+  }
+  
+  },
+  
+  {
+  $facet:{
+  
+  data:[
+  { $skip:skip },
+  { $limit:limit }
+  ],
+  
+  total:[
+  { $count:"count" }
+  ]
+  
+  }
+  
+  }
+  
+  ]
+  
+  const usersResult = await User.aggregate(usersPipeline)
+  
+  const usersData = usersResult[0].data
+  const totalUsers = usersResult[0].total[0]?.count || 0
+  
+  /* STATS */
+  
+  const trialUsers = await Subscription.countDocuments({ planType:"TRIAL" })
+  
+  const activeSubscribers = await Subscription.countDocuments({ status:"ACTIVE" })
+  
+  const expiredCancelled = await Subscription.countDocuments({
+  status:{ $in:["EXPIRED","CANCELLED"] }
+  })
+  
+  const bannedUsers = await User.countDocuments({ isBanned:true })
+  
+  const pendingVerification = await User.countDocuments({ isVerified:false })
+  
+  /* CONTACTS */
+  
+  const contactsAgg = await EmergencyContact.aggregate([
+  { $group:{ _id:"$userId"} }
+  ])
+  
+  const usersWithContacts = contactsAgg.map(c=>c._id)
+  
+  const noContacts = await User.countDocuments({
+  _id:{ $nin:usersWithContacts }
+  })
+  
+  /* CREDITS */
+  
+  const creditsAgg = await CreditTransaction.aggregate([
+  { $sort:{ createdAt:-1 }},
+  {
+  $group:{
+  _id:"$userId",
+  balance:{ $first:"$balanceAfter"}
+  }
+  }
+  ])
+  
+  const lowCredits = creditsAgg.filter(c=>c.balance<2).length
+  
+  /* REGIONS */
+  
+  const regionsAgg = await User.aggregate([
+  {
+  $group:{
+  _id:"$region",
+  users:{ $sum:1 }
+  }
+  }
+  ])
+  
+  const regions = {
+  APAC:0,
+  EMEA:0,
+  LATAM:0,
+  OTHER:0
+  }
+  
+  regionsAgg.forEach(r=>{
+  if(regions[r._id] !== undefined){
+  regions[r._id] = r.users
+  }else{
+  regions.OTHER += r.users
+  }
+  })
+  
+  /* COUNTRIES */
+  
+  const countries = await User.aggregate([
+  {
+  $match:{ country:{ $nin:[null,""] } }
+  },
+  {
+  $group:{
+  _id:"$country",
+  users:{ $sum:1 }
+  }
+  },
+  { $sort:{ users:-1 }},
+  { $limit:5 }
+  ])
+  
+  res.json({
+  
+  stats:{
+  totalUsers,
+  trialUsers,
+  activeSubscribers,
+  expiredCancelled,
+  bannedUsers,
+  pendingVerification,
+  noContacts,
+  lowCredits
+  },
+  
+  regions,
+  countries,
+  
+  users:{
+  page,
+  limit,
+  total:totalUsers,
+  pages:Math.ceil(totalUsers/limit),
+  data:usersData
+  }
+  
+  })
+  
+  }catch(error){
+  console.error(error)
+  res.status(500).json({ message:error.message })
+  }
+  }
+
 exports.getAlerts = async (req, res) => {
   try {
     const alerts = await Alert.find()
@@ -245,10 +507,18 @@ exports.exportFullUsersPDF = async (req, res) => {
 
     let filter = {};
     if (from && to) {
+
+      const start = new Date(from);
+      start.setHours(0,0,0,0);
+    
+      const end = new Date(to);
+      end.setHours(23,59,59,999);
+    
       filter.createdAt = {
-        $gte: new Date(from),
-        $lte: new Date(to + "T23:59:59.999Z"),
+        $gte: start,
+        $lte: end
       };
+    
     }
 
     const users = await User.find(filter).sort({ createdAt: -1 });

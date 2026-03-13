@@ -1,19 +1,23 @@
 const SupportTicket = require("../models/SupportTicket");
+const User = require("../models/User");
 
 exports.createTicket = async (req, res) => {
   try {
 
-    const { email, subject, description } = req.body;
+    const { subject, description } = req.body;
 
-    if (!email || !subject || !description) {
+    if (!subject || !description) {
       return res.status(400).json({
-        message: "All fields are required"
+        message: "Subject and description are required"
       });
     }
 
+    // user fetch
+    const user = await User.findById(req.user.userId);
+
     const ticket = await SupportTicket.create({
       userId: req.user.userId,
-      email,
+      email: user.email,   // auto fetch
       subject,
       description,
       attachmentUrl: req.file?.path || null

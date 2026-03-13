@@ -35,6 +35,16 @@ language: { type: String, default: "en" },
     updatedAt: Date,
   },
 
+  country:{
+    type:String
+   },
+   
+   region:{
+    type:String,
+    enum:["APAC","EMEA","LATAM","OTHER"],
+    default:"OTHER"
+   },
+
   // subscription related
   subscriptionStatus: {
     type: String,
@@ -52,6 +62,8 @@ language: { type: String, default: "en" },
   deviceToken: {
     type: String,
   },
+
+
 
  },
 

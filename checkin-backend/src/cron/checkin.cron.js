@@ -4,6 +4,8 @@ const Alert = require("../models/Alert");
 const User = require("../models/User");
 const EmergencyContact = require("../models/EmergencyContact");
 const CheckinLog = require("../models/CheckinLog");
+const Subscription = require("../models/subscription");
+const CreditTransaction = require("../models/creditTransaction");
 
 const { deductCredit } = require("../services/creditService");
 const { sendPush } = require("../services/pushService");
@@ -164,14 +166,56 @@ cron.schedule("* * * * *", async () => {
 
         console.log("📞 Contacts ready:", contacts.length);
 
+        
+
       }
 
     }
+
+    /* ================= AUTO DELETE UNVERIFIED USERS ================= */
+
+try {
+
+  const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+  const usersToDelete = await User.find({
+    isVerified: true,
+    createdAt: { $lt: cutoff },
+    $or: [
+      { nameCompleted: false },
+      { emailCompleted: false },
+      { nameCompleted: { $exists: false } },
+      { emailCompleted: { $exists: false } }
+    ]
+  });
+
+  if (usersToDelete.length > 0) {
+
+    const userIds = usersToDelete.map(u => u._id);
+
+    console.log(`🧹 Deleting ${userIds.length} unverified users`);
+
+    await EmergencyContact.deleteMany({ userId: { $in: userIds } });
+    await Checkin.deleteMany({ userId: { $in: userIds } });
+    await Alert.deleteMany({ userId: { $in: userIds } });
+
+    await Subscription.deleteMany({ userId: { $in: userIds } });
+    await CreditTransaction.deleteMany({ userId: { $in: userIds } });
+
+    await User.deleteMany({ _id: { $in: userIds } });
+
+  }
+
+} catch (err) {
+  console.error("❌ Auto-delete error:", err.message);
+}
 
   } catch (error) {
 
     console.error("❌ Check-in cron error:", error.message);
 
   }
+
+  
 
 });

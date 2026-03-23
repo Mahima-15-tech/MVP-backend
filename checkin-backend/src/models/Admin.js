@@ -27,6 +27,21 @@
         required: true
       },
 
+      phone: String,
+age: Number,
+gender: String,
+location: String,
+designation: String,
+profileImage: String,
+
+passwordHistory: [
+  {
+    changedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }
+],
       resetOtp: String,
       resetOtpExpires: Date,
       resetOtpAttempts: { type: Number, default: 0 },

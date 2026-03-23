@@ -55,6 +55,8 @@ const {
   getMyProfile,
   changePassword,
   getAllAdmins,
+  updateProfile,
+  getPasswordHistory,
   deleteAdmin
 } = require("../../controllers/adminpanel/admin.settings.controller");
 
@@ -66,9 +68,16 @@ const {
   triggerTestSOS
 } = require("../../controllers/adminpanel/adminTest.controller");
 
+
+const { getRevenue } = require("../../controllers/adminpanel/adminrevenuecontroller");
+
 /* ================= AUTH ================= */
 
 router.post("/login", adminLogin);
+
+router.put("/me", adminAuth, updateProfile);
+
+router.get("/password-history", adminAuth, getPasswordHistory);
 
 /* ================= DASHBOARD ================= */
 
@@ -220,5 +229,11 @@ router.post(
   requireSuperAdmin,
   triggerTestSOS
 );
+
+
+//revenue
+
+router.get("/revenue",adminAuth, getRevenue);
+
 
 module.exports = router;

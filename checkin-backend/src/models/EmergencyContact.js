@@ -18,6 +18,13 @@ const emergencyContactSchema = new mongoose.Schema(
     relation: {
       type: String, // Friend, Family, etc.
     },
+    consentStatus: {
+      type: String,
+      enum: ["OPTED_IN","OPTED_OUT","PENDING"],
+      default: "PENDING"
+     },
+     
+     consentDate: Date,
   },
   { timestamps: true }
 );

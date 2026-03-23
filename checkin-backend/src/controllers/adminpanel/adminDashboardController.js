@@ -2,13 +2,15 @@ const User = require("../../models/User");
 const Subscription = require("../../models/subscription");
 const Alert = require("../../models/Alert");
 const CreditTransaction = require("../../models/creditTransaction");
+const { getRevenueData } = require("./adminrevenuecontroller");
 
 exports.getDashboardSummary = async (req, res) => {
   try {
 
-
     const todayStart = new Date();
     todayStart.setHours(0,0,0,0);
+
+    const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
     const [
       totalUsers, 
@@ -16,7 +18,8 @@ exports.getDashboardSummary = async (req, res) => {
       alertsToday,
       failedSMS,
       retryInProgress,
-      creditsUsedToday
+      creditsUsedToday,
+      smsConfirmed
     ] = await Promise.all([
 
       User.countDocuments(),
@@ -25,7 +28,11 @@ exports.getDashboardSummary = async (req, res) => {
 
       Alert.countDocuments({ createdAt: { $gte: todayStart } }),
 
-      Alert.countDocuments({ status: "FAILED" }),
+      // ✅ FIXED (24h)
+      Alert.countDocuments({
+        status: "FAILED",
+        createdAt: { $gte: last24h }
+      }),
 
       Alert.countDocuments({ status: "SMS_PENDING" }),
 
@@ -42,46 +49,54 @@ exports.getDashboardSummary = async (req, res) => {
             total: { $sum: { $abs: "$amount" } }
           }
         }
-      ])
+      ]),
+
+      // ✅ NEW
+      Alert.countDocuments({ status: "SUCCESS" })
+
     ]);
+
+    const now = new Date();
 
     const [missedToday, sosToday] = await Promise.all([
+
       Alert.countDocuments({
-        type: "MISSED_CHECKIN",
-        createdAt: { $gte: todayStart }
+        type: { $in: ["MISSED_CHECKIN", "MISSED"] },
+        createdAt: { $gte: todayStart, $lte: now }
       }),
+    
       Alert.countDocuments({
-        type: "SOS",
-        createdAt: { $gte: todayStart }
+        type: { $in: ["SOS", "SOS_ALERT"] },
+        createdAt: { $gte: todayStart, $lte: now }
       })
+    
+    ]);
+    /* ================= PLAN DISTRIBUTION ================= */
+
+    const planCounts = await Subscription.aggregate([
+      { $match: { status: "ACTIVE" } },
+      {
+        $group: {
+          _id: "$planType",
+          count: { $sum: 1 }
+        }
+      }
     ]);
 
-   // Plan distribution (ACTIVE only)
-const planCounts = await Subscription.aggregate([
-  { $match: { status: "ACTIVE" } },
-  {
-    $group: {
-      _id: "$planType",
-      count: { $sum: 1 }
-    }
-  }
-]);
+    let freeTrialUsers = 0;
+    let monthlyUsers = 0;
+    let yearlyUsers = 0;
 
-let freeTrialUsers = 0;
-let monthlyUsers = 0;
-let yearlyUsers = 0;
+    planCounts.forEach(plan => {
+      if (plan._id === "TRIAL") freeTrialUsers = plan.count;
+      if (plan._id === "MONTHLY") monthlyUsers = plan.count;
+      if (plan._id === "YEARLY") yearlyUsers = plan.count;
+    });
 
-planCounts.forEach(plan => {
-  if (plan._id === "TRIAL") {
-    freeTrialUsers = plan.count;
-  }
-  if (plan._id === "MONTHLY") {
-    monthlyUsers = plan.count;
-  }
-  if (plan._id === "YEARLY") {
-    yearlyUsers = plan.count;
-  }
-});
+    /* ================= REVENUE ================= */
+
+    const revenueData = await getRevenueData();
+
     res.json({
       totalUsers,
       activeSubscriptions,
@@ -89,15 +104,21 @@ planCounts.forEach(plan => {
       failedSMS,
       retryInProgress,
       missedToday,
+      sosToday,
+      smsConfirmed,
+
       freeTrialUsers,
-monthlyUsers,
-yearlyUsers,
-sosToday,
-      creditsUsedToday: creditsUsedToday[0]?.total || 0
+      monthlyUsers,
+      yearlyUsers,
+
+      creditsUsedToday: creditsUsedToday[0]?.total || 0,
+
+      revenue: revenueData
     });
 
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
 

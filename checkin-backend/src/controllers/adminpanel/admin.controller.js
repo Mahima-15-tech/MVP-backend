@@ -50,9 +50,16 @@ exports.getUsers = async (req, res) => {
     /* -------- DATE FILTER -------- */
 
     if (from && to) {
+
+      const start = new Date(from);
+      start.setHours(0,0,0,0);
+    
+      const end = new Date(to);
+      end.setHours(23,59,59,999);
+    
       filter.createdAt = {
-        $gte: new Date(from),
-        $lte: new Date(to + "T23:59:59.999Z")
+        $gte: start,
+        $lte: end
       };
     }
 
@@ -152,6 +159,22 @@ exports.getUsersDashboardUltra = async (req, res) => {
   { phone:{ $regex:search,$options:"i"} }
   ]
   }
+
+  const from = req.query.from;
+const to = req.query.to;
+
+if (from && to) {
+  const start = new Date(from);
+  start.setHours(0,0,0,0);
+
+  const end = new Date(to);
+  end.setHours(23,59,59,999);
+
+  match.createdAt = {
+    $gte: start,
+    $lte: end
+  };
+}
   
   const usersPipeline = [
   
@@ -294,7 +317,13 @@ exports.getUsersDashboardUltra = async (req, res) => {
   
   const bannedUsers = await User.countDocuments({ isBanned:true })
   
-  const pendingVerification = await User.countDocuments({ isVerified:false })
+  const pendingVerification = await User.countDocuments({
+    isVerified: true,
+    $or: [
+      { nameCompleted: false },
+      { emailCompleted: false }
+    ]
+  });
   
   /* CONTACTS */
   
@@ -361,7 +390,7 @@ exports.getUsersDashboardUltra = async (req, res) => {
   }
   },
   { $sort:{ users:-1 }},
-  { $limit:5 }
+  { $limit:4 }
   ])
   
   res.json({
@@ -413,21 +442,70 @@ const { Parser } = require("json2csv");
 
 exports.exportUsersCSV = async (req, res) => {
 
-  const users = await User.find();
+  const users = await User.find().lean();
 
-  const fields = [
-    "name",
-    "phone",
-    "email",
-    "createdAt"
-  ];
+  const userIds = users.map(u => u._id);
 
-  const parser = new Parser({ fields });
+  const subscriptions = await Subscription.find({ userId: { $in: userIds } });
+  const alerts = await Alert.aggregate([
+    { $match: { userId: { $in: userIds } } },
+    { $group: { _id: "$userId", count: { $sum: 1 } } }
+  ]);
 
-  const csv = parser.parse(users);
+  const credits = await CreditTransaction.aggregate([
+    { $sort: { createdAt: -1 } },
+    {
+      $group: {
+        _id: "$userId",
+        balance: { $first: "$balanceAfter" }
+      }
+    }
+  ]);
+
+  const contacts = await EmergencyContact.aggregate([
+    { $group: { _id: "$userId", count: { $sum: 1 } } }
+  ]);
+
+  // maps
+  const subMap = {};
+  subscriptions.forEach(s => subMap[s.userId] = s);
+
+  const alertMap = {};
+  alerts.forEach(a => alertMap[a._id] = a.count);
+
+  const creditMap = {};
+  credits.forEach(c => creditMap[c._id] = c.balance);
+
+  const contactMap = {};
+  contacts.forEach(c => contactMap[c._id] = c.count);
+
+  const finalData = users.map(u => {
+
+    const sub = subMap[u._id];
+
+    return {
+      Name: u.name,
+      Phone: u.phone,
+      Email: u.email,
+      Joined: u.createdAt,
+
+      Plan: sub?.planType || "NO PLAN",
+      Status: u.isBanned ? "BANNED" : "ACTIVE",
+
+      Credits: creditMap[u._id] || 0,
+      AlertsSent: alertMap[u._id] || 0,
+      Contacts: contactMap[u._id] || 0,
+
+      Region: u.region,
+      Country: u.country
+    };
+  });
+
+  const parser = new Parser();
+  const csv = parser.parse(finalData);
 
   res.header("Content-Type", "text/csv");
-  res.attachment("users.csv");
+  res.attachment("users-full.csv");
 
   return res.send(csv);
 };
@@ -503,127 +581,92 @@ exports.exportFullUsersPDF = async (req, res) => {
   try {
     const { from, to } = req.query;
 
-    /* ---------------- DATE FILTER ---------------- */
-
+    /* -------- DATE FILTER -------- */
     let filter = {};
-    if (from && to) {
 
+    if (from && to) {
       const start = new Date(from);
       start.setHours(0,0,0,0);
-    
+
       const end = new Date(to);
       end.setHours(23,59,59,999);
-    
-      filter.createdAt = {
-        $gte: start,
-        $lte: end
-      };
-    
+
+      filter.createdAt = { $gte: start, $lte: end };
     }
 
     const users = await User.find(filter).sort({ createdAt: -1 });
 
-    const totalUsers = users.length;
-    const activeUsers = users.filter(u => !u.isBanned).length;
-    const bannedUsers = users.filter(u => u.isBanned).length;
-
-    /* ---------------- FETCH ALL RELATED DATA (NO N+1) ---------------- */
-
     const userIds = users.map(u => u._id);
 
-    const subscriptions = await Subscription.find({
-      userId: { $in: userIds }
-    });
+    const subscriptions = await Subscription.find({ userId: { $in: userIds } });
+    const credits = await CreditTransaction.find({ userId: { $in: userIds } });
+    const alerts = await Alert.find({ userId: { $in: userIds } });
+    const contacts = await EmergencyContact.find({ userId: { $in: userIds } });
 
-    const credits = await CreditTransaction.find({
-      userId: { $in: userIds }
-    });
-
-    const alerts = await Alert.find({
-      userId: { $in: userIds }
-    });
-
-    const contacts = await EmergencyContact.find({
-      userId: { $in: userIds }
-    });
-
-    /* ---------------- PDF INIT ---------------- */
-
+    /* -------- PDF INIT -------- */
     const doc = new PDFDocument({
-      margin: 40,
+      margin: 30,
       size: "A4",
-      bufferPages: true
+      layout: "landscape",
+      bufferPages: true   // ✅ ADD THIS
     });
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
       "Content-Disposition",
-      "attachment; filename=Enterprise-User-Report.pdf"
+      "attachment; filename=User-Report.pdf"
     );
 
     doc.pipe(res);
 
-    /* ---------------- HEADER ---------------- */
-
-    const logoPath = path.join(__dirname, "../../public/logo.png");
-
-    if (fs.existsSync(logoPath)) {
-      doc.image(logoPath, 40, 30, { width: 80 });
-    }
-
+    /* -------- HEADER -------- */
     doc
-      .fontSize(20)
-      .text("Company Admin User Report", 150, 40);
+      .fontSize(22)
+      .fillColor("#002c3e")
+      .text("User Report", 40, 30);
 
     doc
       .fontSize(10)
-      .text(`Generated On: ${new Date().toDateString()}`, 150, 65);
+      .fillColor("#6b7280")
+      .text(`Generated: ${new Date().toDateString()}`, 40, 60);
 
     if (from && to) {
-      doc.text(`Date Range: ${from} to ${to}`, 150, 80);
+      doc.text(`Date Range: ${from} to ${to}`, 40, 75);
     }
 
-    doc.moveDown(5);
+    /* -------- TABLE SETUP -------- */
+    let startX = 40;
+    let rowY = 110;
 
-    /* ---------------- SUMMARY ---------------- */
-
-    doc.fontSize(16).text("Summary", { underline: true });
-    doc.moveDown(1);
-
-    doc.fontSize(12)
-      .text(`Total Users: ${totalUsers}`)
-      .text(`Active Users: ${activeUsers}`)
-      .text(`Banned Users: ${bannedUsers}`);
-
-    doc.addPage();
-
-    /* ---------------- TABLE HEADER ---------------- */
-
-    let tableTop = 60;
-
-    doc.fontSize(14).text("User Details", 40, 30);
-
-    doc.fontSize(9);
+    const colWidths = [120, 100, 160, 100, 100, 90, 80, 80, 80, 80, 100];
 
     const headers = [
-      "Name",
-      "Phone",
-      "Plan",
-      "Credits",
-      "Contacts",
-      "Alerts",
-      "Status"
+      "Name", "Phone", "Email", "Joined",
+      "Plan", "Status", "Credits",
+      "Alerts", "Contacts", "Region", "Country"
     ];
 
-    const columnPositions = [40, 120, 200, 260, 310, 380, 440];
+    /* -------- HEADER BG -------- */
+    doc.rect(startX, rowY, 850, 25).fill("#002c3e");
 
-    headers.forEach((header, i) => {
-      doc.text(header, columnPositions[i], tableTop);
+    doc.fillColor("#ffffff").fontSize(10);
+
+    let x = startX;
+
+    headers.forEach((h, i) => {
+      doc.text(h, x + 5, rowY + 7, {
+        width: colWidths[i],
+        ellipsis: true
+      });
+      x += colWidths[i];
     });
 
-    let rowY = tableTop + 20;
+    rowY += 30;
 
-    /* ---------------- TABLE DATA ---------------- */
+    /* -------- ROWS -------- */
+    doc.fontSize(9);
+
+    let rowIndex = 0;
 
     for (const user of users) {
 
@@ -631,54 +674,62 @@ exports.exportFullUsersPDF = async (req, res) => {
         s.userId.toString() === user._id.toString()
       );
 
-      const userCredits = credits.filter(c =>
+      const credit = credits.find(c =>
         c.userId.toString() === user._id.toString()
       );
 
-      const userAlerts = alerts.filter(a =>
+      const alertCount = alerts.filter(a =>
         a.userId.toString() === user._id.toString()
-      );
+      ).length;
 
-      const userContacts = contacts.filter(c =>
+      const contactCount = contacts.filter(c =>
         c.userId.toString() === user._id.toString()
-      );
-
-      const contactNames = userContacts.map(c => c.name).join(", ");
+      ).length;
 
       const row = [
         user.name || "Unnamed",
         user.phone || "-",
-        subscription ? subscription.planType : "No Plan",
-        userCredits.length,
-        contactNames || "None",
-        userAlerts.length,
-        user.isBanned ? "BANNED" : "ACTIVE"
+        user.email || "-",
+        new Date(user.createdAt).toLocaleDateString(),
+
+        subscription?.planType || "NO PLAN",
+        user.isBanned ? "BANNED" : "ACTIVE",
+
+        credit?.balanceAfter || 0,
+        alertCount,
+        contactCount,
+
+        user.region || "-",
+        user.country || "-"
       ];
 
+      // zebra background
+      if (rowIndex % 2 === 0) {
+        doc.rect(startX, rowY, 850, 22).fill("#f5f5f5");
+      }
+
+      let x = startX;
+      doc.fillColor("#000000");
+
       row.forEach((text, i) => {
-        doc.text(String(text), columnPositions[i], rowY, {
-          width: 70
+        doc.text(String(text), x + 5, rowY + 5, {
+          width: colWidths[i],
+          ellipsis: true
         });
+        x += colWidths[i];
       });
 
-      rowY += 25;
+      rowY += 22;
+      rowIndex++;
 
-      /* ---- Auto Page Break ---- */
-
-      if (rowY > 750) {
+      /* ---- PAGE BREAK ---- */
+      if (rowY > 550) {
         doc.addPage();
-        rowY = 60;
-
-        headers.forEach((header, i) => {
-          doc.text(header, columnPositions[i], rowY);
-        });
-
-        rowY += 20;
+        rowY = 80;
       }
     }
 
-    /* ---------------- PAGE NUMBERS ---------------- */
-
+    /* -------- PAGE NUMBER -------- */
     const pageRange = doc.bufferedPageRange();
 
     for (let i = 0; i < pageRange.count; i++) {
@@ -686,10 +737,11 @@ exports.exportFullUsersPDF = async (req, res) => {
 
       doc
         .fontSize(9)
+        .fillColor("#6b7280")
         .text(
           `Page ${i + 1} of ${pageRange.count}`,
           0,
-          820,
+          570,
           { align: "center" }
         );
     }
@@ -697,7 +749,7 @@ exports.exportFullUsersPDF = async (req, res) => {
     doc.end();
 
   } catch (error) {
-    console.error("Enterprise PDF error:", error);
+    console.error("PDF error:", error);
 
     if (!res.headersSent) {
       res.status(500).json({ message: "Failed to generate PDF" });

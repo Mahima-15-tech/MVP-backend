@@ -7,8 +7,31 @@ exports.getAlertMonitoring = async (req, res) => {
     const limit = 20;
     const skip = (page - 1) * limit;
 
-    const alerts = await Alert.aggregate([
+    const match = {};
 
+if(req.query.type && req.query.type !== "ALL"){
+match.type = req.query.type;
+}
+
+if(req.query.status && req.query.status !== "ALL"){
+match.status = req.query.status;
+}
+
+if(req.query.plan && req.query.plan !== "ALL"){
+match["subscription.planType"] = req.query.plan;
+}
+
+const search = req.query.search;
+
+if (search) {
+  match.$or = [
+    { "user.name": { $regex: search, $options: "i" } },
+    { "user.phone": { $regex: search, $options: "i" } }
+  ];
+}
+
+    const alerts = await Alert.aggregate([
+      
       {
         $lookup: {
           from: "users",
@@ -17,6 +40,7 @@ exports.getAlertMonitoring = async (req, res) => {
           as: "user"
         }
       },
+      
       { $unwind: "$user" },
 
       {
@@ -28,6 +52,8 @@ exports.getAlertMonitoring = async (req, res) => {
         }
       },
       { $unwind: { path: "$subscription", preserveNullAndEmptyArrays: true } },
+
+      { $match: match },
 
       {
         $lookup: {

@@ -27,8 +27,16 @@ profileImage: {
   default: null
 },
 profileLocation: String,
-language: { type: String, default: "en" },
-  alertVoice: { type: String, default: "female_soft" },
+language: {
+  type: String,
+  enum: ["en", "zh"],
+  default: "en"
+},
+alertVoice: {
+  type: String,
+  enum: ["female_soft","male_soft"],
+  default: "female_soft"
+ },
   lastKnownLocation: {
     lat: Number,
     lng: Number,

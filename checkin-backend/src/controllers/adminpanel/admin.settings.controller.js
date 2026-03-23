@@ -32,11 +32,29 @@ exports.changePassword = async (req, res) => {
     }
 
     const hashed = await bcrypt.hash(newPassword, 10);
+
     admin.password = hashed;
+
+    // ✅ ADD THIS
+    admin.passwordHistory.push({ changedAt: new Date() });
 
     await admin.save();
 
     res.json({ message: "Password updated successfully" });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getPasswordHistory = async (req, res) => {
+  try {
+    const admin = await Admin.findById(req.admin.adminId);
+
+    const history = admin.passwordHistory
+      .sort((a, b) => b.changedAt - a.changedAt);
+
+    res.json(history);
 
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -55,6 +73,36 @@ exports.getAllAdmins = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+
+//update profile
+
+exports.updateProfile = async (req,res)=>{
+  try{
+  
+  const adminId = req.admin.adminId;
+  
+  const updated = await Admin.findByIdAndUpdate(
+  adminId,
+  {
+    name: req.body.name,
+    phone: req.body.phone,
+    gender: req.body.gender,
+    location: req.body.location,
+    age: req.body.age,
+    designation: req.body.designation,
+    email: req.body.email,          // ✅ ADD THIS
+    profileImage: req.body.profileImage 
+  },
+  {new:true}
+  ).select("-password");
+  
+  res.json(updated);
+  
+  }catch(err){
+  res.status(500).json({message:err.message});
+  }
+  };
 
 /* ===============================
    DELETE ADMIN (Super Only)

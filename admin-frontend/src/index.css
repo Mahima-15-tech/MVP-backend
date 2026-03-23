@@ -1,9 +1,47 @@
+
+
+
 @import "tailwindcss";
+
+
+
+
 
 /* RESET */
 * {
   box-sizing: border-box;
-  font-family: Inter, system-ui, sans-serif;
+  /* font-family: Inter, system-ui, sans-serif; */
+}
+
+
+@font-face {
+  font-family: "InterCustom";
+  src: url("./assets/fonts/Inter_18pt-Regular.ttf") format("truetype");
+  font-weight: 400;
+}
+
+@font-face {
+  font-family: "InterCustom";
+  src: url("./assets/fonts/Inter_18pt-Medium.ttf") format("truetype");
+  font-weight: 500;
+}
+
+@font-face {
+  font-family: "InterCustom";
+  src: url("./assets/fonts/Inter_18pt-SemiBold.ttf") format("truetype");
+  font-weight: 600;
+}
+
+@font-face {
+  font-family: "InterCustom";
+  src: url("./assets/fonts/Inter_18pt-Bold.ttf") format("truetype");
+  font-weight: 700;
+}
+
+
+*{
+  font-family: "InterCustom", sans-serif;
+  /* letter-spacing: 0.3px; */
 }
 
 body {
@@ -16,6 +54,27 @@ body {
 .admin-layout {
   display: flex;
   min-height: 100vh;
+}
+
+/* SCROLLBAR DESIGN */
+
+/* width of scrollbar */
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+/* long track */
+::-webkit-scrollbar-track {
+  background: #e8e8e8;
+  margin-top: 10px;   /* top gap */
+  /* margin-bottom: 10px; bottom gap */
+  border-radius: 20px;
+}
+
+/* handle */
+::-webkit-scrollbar-thumb {
+  background: #b6b9b3;
+  border-radius: 10px;
 }
 
 /* SIDEBAR */
@@ -340,4 +399,161 @@ body {
     rgba(56,189,248,0.25),
     transparent 60%
   );
+}
+
+
+.status.active {
+  color: #22c55e;
+}
+.status.paused {
+  color: #facc15;
+}
+.status.missed {
+  color: #ef4444;
+}
+
+/* =========================
+   ADMIN LOGIN PAGE
+========================= */
+
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at top right, rgba(56,189,248,0.15), transparent 40%),
+    radial-gradient(circle at bottom left, rgba(168,85,247,0.12), transparent 40%),
+    #020617;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 420px;
+  padding: 36px;
+  border-radius: 20px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(255,255,255,0.08);
+  backdrop-filter: blur(12px);
+  box-shadow:
+    0 20px 40px rgba(0,0,0,0.6),
+    inset 0 1px 0 rgba(255,255,255,0.04);
+}
+
+.login-title {
+  font-size: 28px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.login-subtitle {
+  margin-top: 6px;
+  margin-bottom: 28px;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+.form-group {
+  margin-bottom: 18px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: #cbd5f5;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(2, 6, 23, 0.8);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #fff;
+  outline: none;
+}
+
+.form-group input:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 1px rgba(56,189,248,0.4);
+}
+
+.login-btn {
+  width: 100%;
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #38bdf8, #6366f1);
+  border: none;
+  font-weight: 600;
+  color: #020617;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.login-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(56,189,248,0.25);
+}
+
+.login-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.login-error {
+  margin-bottom: 12px;
+  padding: 10px;
+  border-radius: 10px;
+  background: rgba(239,68,68,0.12);
+  color: #fca5a5;
+  font-size: 13px;
+  text-align: center;
+}
+
+
+/* Hide scrollbar */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+
+.custom-popper {
+  z-index: 9999 !important;
+}
+
+.react-datepicker {
+  border: none !important;
+  width: 100% !important;
+}
+
+.react-datepicker__month {
+  margin: 0 !important;
+}
+
+.react-datepicker__header {
+  background: transparent !important;
+  border-bottom: none !important;
+}
+
+.react-datepicker__day {
+  width: 2rem;
+  line-height: 2rem;
+}
+
+.react-datepicker__day--selected {
+  background: #78bcc4 !important;
+  border-radius: 50% !important;
+}
+
+.react-datepicker__day:hover {
+  background: #e6f7f9 !important;
+  border-radius: 50%;
 }

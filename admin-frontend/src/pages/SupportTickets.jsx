@@ -1,0 +1,344 @@
+import { useEffect, useState } from "react";
+import api from "../api/axios";
+import { Eye } from "lucide-react";
+import TicketModal from "../components/TicketModal";
+
+export default function SupportTickets() {
+
+const [tickets,setTickets] = useState([]);
+const [filter,setFilter] = useState("ALL");
+const [search,setSearch] = useState("");
+const [selected,setSelected] = useState(null);
+const [page,setPage] = useState(1);
+const itemsPerPage = 8;
+
+useEffect(()=>{
+fetchTickets();
+},[]);
+
+const fetchTickets = async()=>{
+try{
+
+const res = await api.get("/support");
+
+setTickets(res.data);
+
+}catch(err){
+console.error(err);
+}
+};
+
+/* ================= FILTER ================= */
+
+const filtered = tickets.filter(t=>{
+
+const matchStatus =
+filter === "ALL" || t.status === filter;
+
+const matchSearch =
+t.subject.toLowerCase().includes(search.toLowerCase()) ||
+t.email.toLowerCase().includes(search.toLowerCase());
+
+return matchStatus && matchSearch;
+
+});
+
+const totalPages = Math.ceil(filtered.length / itemsPerPage);
+
+const paginatedData = filtered.slice(
+  (page - 1) * itemsPerPage,
+  page * itemsPerPage
+);
+
+useEffect(()=>{
+  setPage(1);
+},[filter,search]);
+
+/* ================= STATS ================= */
+
+const open = tickets.filter(t=>t.status==="OPEN").length;
+const progress = tickets.filter(t=>t.status==="IN_PROGRESS").length;
+const resolved = tickets.filter(t=>t.status==="RESOLVED").length;
+
+
+return(
+
+<div className="space-y-10">
+
+
+{/* ================= FILTER BAR ================= */}
+
+<div
+className="
+bg-[#B5B9B2]
+rounded-4xl
+px-8
+py-5
+flex
+items-center
+gap-4
+
+"
+>
+
+{/* SEARCH */}
+
+<input
+type="text"
+placeholder="Search Requests..."
+value={search}
+onChange={(e)=>setSearch(e.target.value)}
+className="
+bg-white
+rounded-full
+px-6
+py-3
+w-[260px]
+outline-none
+text-[#5a6c7d]
+"
+/>
+
+
+{/* STATUS PILLS */}
+
+{[
+{label:"All",value:"ALL"},
+{label:"Open",value:"OPEN"},
+{label:"In Progress",value:"IN_PROGRESS"},
+{label:"Resolved",value:"RESOLVED"}
+].map(s=>(
+
+<button
+key={s.value}
+onClick={()=>setFilter(s.value)}
+className={`
+px-14
+py-3
+rounded-full
+font-semibold
+
+${filter===s.value
+? "bg-[#002c3e] text-white"
+: "bg-white text-[#5a6c7d]"
+}
+`}
+>
+
+{s.label}
+
+</button>
+
+))}
+
+</div>
+
+
+
+{/* ================= STATS ================= */}
+
+<div className="grid grid-cols-3 gap-6">
+
+<Card label="Open Requests" value={open} error/>
+
+<Card label="In Progress" value={progress} error/>
+
+<Card label="Resolved" value={resolved}/>
+
+</div>
+
+
+
+{/* ================= TABLE ================= */}
+
+<div className="bg-white rounded-4xl overflow-hidden">
+
+<table className="w-full text-[16px]">
+
+<thead className="bg-[#78bcc4] text-white">
+
+<tr>
+
+<th className="px-6 py-5 text-left">User ID</th>
+
+<th className="px-6 py-5 text-left">User Name</th>
+
+<th className="px-6 py-5 text-left">Email</th>
+
+<th className="px-6 py-5 text-left">Subject</th>
+
+<th className="px-6 py-5 text-left">Status</th>
+
+<th className="px-6 py-5 text-left">Date</th>
+
+<th className="px-6 py-5 text-left">View</th>
+
+</tr>
+
+</thead>
+
+
+<tbody className="text-[#5a6c7d]">
+
+{paginatedData.map((t,i)=>(
+
+<tr
+key={i}
+className="border-b border-[#e5e5e5] hover:bg-[#f7f8f3]"
+>
+
+<td className="px-6 py-4">
+
+{t.userId?.phone || "-"}
+
+</td>
+
+<td className="px-6 py-4 font-semibold">
+
+{t.userId?.name || "User"}
+
+</td>
+
+<td className="px-6 py-4">
+
+{t.email}
+
+</td>
+
+<td className="px-6 py-4">
+
+{t.subject}
+
+</td>
+
+<td
+className={`
+px-6 py-4 font-semibold
+${t.status==="OPEN"
+? "text-[#ee6a59]"
+: t.status==="IN_PROGRESS"
+? "text-[#f59e0b]"
+: "text-[#78bcc4]"
+}
+`}
+>
+
+{t.status
+.toLowerCase()
+.replace("_"," ")
+.replace(/^\w/, c => c.toUpperCase())
+}
+
+</td>
+
+<td className="px-6 py-4">
+
+{new Date(t.createdAt).toLocaleDateString()}
+
+</td>
+
+<td className="px-6 py-4">
+
+<button
+onClick={()=>setSelected(t)}
+className="text-[#78bcc4]"
+>
+
+<Eye size={18}/>
+
+</button>
+
+</td>
+
+</tr>
+
+))}
+
+</tbody>
+
+</table>
+
+
+
+
+</div>
+
+
+
+{/* ================= PAGINATION ================= */}
+
+{totalPages > 1 && (
+<div className="flex justify-center items-center gap-6">
+
+<button
+onClick={()=>setPage(p => Math.max(p-1,1))}
+disabled={page === 1}
+className="border-[#5a6c7d] border-2 text-[#5a6c7d] font-semibold px-6 py-2 rounded-full disabled:opacity-40"
+>
+Back
+</button>
+
+<span className="text-[#5a6c7d]">
+Page {page} of {totalPages}
+</span>
+
+<button
+onClick={()=>setPage(p => Math.min(p+1,totalPages))}
+disabled={page === totalPages}
+className="bg-[#002c3e] text-white px-6 py-2 rounded-full disabled:opacity-40"
+>
+Next
+</button>
+
+<p className="text-center text-sm text-[#9aa7b2] mt-2">
+Showing {paginatedData.length} of {filtered.length} results
+</p>
+
+</div>
+)}
+
+{selected && (
+    <TicketModal
+      ticket={selected}
+      onClose={() => setSelected(null)}
+      refresh={fetchTickets}
+    />
+  )}
+
+
+
+
+
+</div>
+
+);
+}
+
+
+
+/* ================= CARD ================= */
+
+function Card({label,value,error}){
+
+return(
+
+<div className="bg-[#f5f5f5] rounded-4xl px-8 py-6">
+
+<p className="text-[#5a6c7d] text-lg font-semibold">
+
+{label}
+
+</p>
+
+<p className={`text-6xl font-bold mt-2 ${error ? "text-[#ee6a59]" : "text-[#002c3e]"}`}>
+
+{value}
+
+</p>
+
+</div>
+
+);
+
+}
+

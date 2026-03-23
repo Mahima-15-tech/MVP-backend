@@ -2,7 +2,7 @@ import axios from "axios";
 import { getAdminToken } from "../utils/auth";
 
 const api = axios.create({
-  baseURL: "http://localhost:3000/api",
+  baseURL: "https://mvp-backend-3rq1.onrender.com/api",
 });
 
 api.interceptors.request.use((config) => {

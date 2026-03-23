@@ -2,7 +2,7 @@ const User = require("../../models/User");
 const Subscription = require("../../models/subscription");
 const Alert = require("../../models/Alert");
 const CreditTransaction = require("../../models/creditTransaction");
-const { getRevenueData } = require("./adminrevenuecontroller");
+const { getRevenueData } = require("./adminRevenueController");
 
 exports.getDashboardSummary = async (req, res) => {
   try {

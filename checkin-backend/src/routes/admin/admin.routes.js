@@ -69,7 +69,7 @@ const {
 } = require("../../controllers/adminpanel/adminTest.controller");
 
 
-const { getRevenue } = require("../../controllers/adminpanel/adminrevenuecontroller");
+const { getRevenue } = require("../../controllers/adminpanel/adminRevenueController");
 
 /* ================= AUTH ================= */
 

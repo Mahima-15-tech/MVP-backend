@@ -6,7 +6,7 @@ const Subscription = require("../models/subscription");
 const CreditTransaction = require("../models/creditTransaction");
 const PushLog = require("../models/PushLog"); // if exists
 const SmsConsent = require("../models/SmsConsent");
-
+const buildSubscriptionResponse = require("../../utils/buildSubscriptionResponse");
 
 
 // 1️⃣ Update profile (name)
@@ -252,7 +252,15 @@ exports.updatePreferences = async (req, res) => {
 // 3️⃣ Get profile
 exports.getProfile = async (req, res) => {
   const user = await User.findById(req.user.userId);
-  res.json(user);
+  const subscription = await buildSubscriptionResponse(user);
+
+res.json({
+  status: 1,
+  user: {
+    ...user.toObject(),
+    subscription
+  }
+});
 };
 
 // 4️⃣ Update last known location

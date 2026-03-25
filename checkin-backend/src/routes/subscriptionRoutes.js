@@ -5,6 +5,7 @@ const auth = require("../middleware/auth.middleware");
 const {
   startFreeTrial,
   purchasePlan,
+  buyTopup,
   getSubscriptionStatus,
   cancelSubscription,
 } = require("../controllers/subscriptionController");
@@ -14,6 +15,7 @@ const {
 router.post("/start-trial",  auth, startFreeTrial);
 // 🔹 Purchase Monthly / Yearly
 router.post("/purchase", auth, purchasePlan);
+router.post("/topup", auth, buyTopup);
 router.get("/status", auth, getSubscriptionStatus);
 router.post("/cancel", auth, cancelSubscription);
 

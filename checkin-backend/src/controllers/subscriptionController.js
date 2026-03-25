@@ -1,8 +1,9 @@
 const Subscription = require("../models/subscription");
 const User = require("../models/User");
-const { addCredits,  getUserBalance } = require("../services/creditService");
+const { addCredits,  getUserBalance, resetCredits  } = require("../services/creditService");
 const PhoneRegistry = require("../models/PhoneRegistry");
 const SubscriptionHistory = require("../models/SubscriptionHistory");
+const buildSubscriptionResponse = require("../../utils/buildSubscriptionResponse");
 
 exports.startFreeTrial = async (req, res) => {
   try {
@@ -62,7 +63,14 @@ exports.startFreeTrial = async (req, res) => {
       await registry.save();
     }
 
-    res.json({ message: "Free trial started" });
+    const updatedUser = await User.findById(userId);
+    const subscription = await buildSubscriptionResponse(updatedUser);
+    
+    res.json({
+      status: 1,
+      message: "Free trial started",
+      subscription
+    });
 
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -75,22 +83,25 @@ exports.purchasePlan = async (req, res) => {
     const userId = req.user.userId;
     const { planType } = req.body;
 
-    let durationDays;
     let credits;
 
     if (planType === "MONTHLY") {
-      durationDays = 30;
       credits = 3;
     } else if (planType === "YEARLY") {
-      durationDays = 365;
-      credits = 36;
+      credits = 3; // monthly cycle for yearly
     } else {
       return res.status(400).json({ message: "Invalid plan" });
     }
 
     const startDate = new Date();
-    const endDate = new Date();
-    endDate.setDate(endDate.getDate() + durationDays);
+    const endDate = new Date(startDate);
+
+    // ✅ set expiry
+    if (planType === "MONTHLY") {
+      endDate.setMonth(endDate.getMonth() + 1);
+    } else {
+      endDate.setFullYear(endDate.getFullYear() + 1);
+    }
 
     let sub = await Subscription.findOne({ userId });
 
@@ -98,7 +109,7 @@ exports.purchasePlan = async (req, res) => {
       return res.status(400).json({ message: "No existing subscription found" });
     }
 
-    // 🔥 CREATE HISTORY
+    // 🔥 history
     await SubscriptionHistory.create({
       userId,
       previousPlan: sub.planType,
@@ -106,24 +117,81 @@ exports.purchasePlan = async (req, res) => {
       changedBy: "USER"
     });
 
-    // 🔥 UPDATE SUB
+    // 🔥 update subscription
     sub.planType = planType;
     sub.startDate = startDate;
     sub.endDate = endDate;
-    sub.nextRenewalDate = endDate;
     sub.creditsPerCycle = credits;
-    sub.autoRenew = true;
     sub.status = "ACTIVE";
+
+    // ✅ IMPORTANT LOGIC
+    if (planType === "YEARLY") {
+      const nextRenewal = new Date(startDate);
+      nextRenewal.setMonth(nextRenewal.getMonth() + 1);
+      sub.nextRenewalDate = nextRenewal;
+    } else {
+      sub.nextRenewalDate = null; // ❌ monthly doesn't auto renew
+    }
 
     await sub.save();
 
-    await User.findByIdAndUpdate(userId, {
-      subscriptionStatus: "ACTIVE",
+    // ❗ reset old credits (trial/topup)
+    await resetCredits(userId);
+
+    // ✅ add fresh credits (3)
+    await addCredits(userId, credits, "RENEWAL");
+
+    const updatedUser = await User.findById(userId);
+    const subscription = await buildSubscriptionResponse(updatedUser);
+
+    res.json({
+      status: 1,
+      message: "Subscription activated",
+      subscription
     });
 
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.buyTopup = async (req, res) => {
+  try {
+
+    const userId = req.user.userId;
+    const { credits } = req.body; // 3 or 5
+
+    if (![3, 5].includes(credits)) {
+      return res.status(400).json({ message: "Invalid topup" });
+    }
+
+    const sub = await Subscription.findOne({ userId });
+
+    // ❌ NOT ALLOWED FOR TRIAL OR NO PLAN
+    if (!sub || sub.planType === "TRIAL") {
+      return res.status(400).json({
+        message: "Top-up only for paid users"
+      });
+    }
+
+    if (sub.status !== "ACTIVE") {
+      return res.status(400).json({
+        message: "Subscription inactive"
+      });
+    }
+
+    // ✅ ADD TOPUP
     await addCredits(userId, credits, "TOPUP");
 
-    res.json({ message: "Subscription activated" });
+    const updatedUser = await User.findById(userId);
+    const subscription = await buildSubscriptionResponse(updatedUser);
+    
+    res.json({
+      status: 1,
+      message: "Top-up added",
+      creditsAdded: credits,
+      subscription
+    });
 
   } catch (error) {
     res.status(500).json({ message: error.message });

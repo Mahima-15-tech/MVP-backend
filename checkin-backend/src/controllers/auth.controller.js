@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const PhoneRegistry = require("../models/PhoneRegistry");
 const { formatPhone } = require("../../utils/phoneFormatter");
 const getCountryRegion = require("../../utils/countryRegion");
+const buildSubscriptionResponse = require("../../utils/buildSubscriptionResponse");
 
 
 exports.sendOtp = async (req, res) => {
@@ -109,14 +110,19 @@ exports.verifyOtp = async (req, res) => {
     process.env.JWT_SECRET
   );
 
-  res.json({
-    status: 1,
-    token,
-    onboarding: {
-      emailCompleted: user.emailCompleted,
-      nameCompleted: user.nameCompleted
-    },
-    user
-  });
+  const subscription = await buildSubscriptionResponse(user);
+
+res.json({
+  status: 1,
+  token,
+  onboarding: {
+    emailCompleted: user.emailCompleted,
+    nameCompleted: user.nameCompleted
+  },
+  user: {
+    ...user.toObject(),
+    subscription
+  }
+});
 
 };

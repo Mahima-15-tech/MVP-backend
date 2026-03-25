@@ -2,6 +2,7 @@ const EmergencyContact = require("../models/EmergencyContact");
 const ContactHistory = require("../models/ContactHistory");
 const Subscription = require("../models/subscription");
 const { formatPhone } = require("../../utils/phoneFormatter");
+const buildSubscriptionResponse = require("../../utils/buildSubscriptionResponse");
 
 // ➕ Add contact
 exports.addContact = async (req, res) => {
@@ -71,9 +72,14 @@ exports.addContact = async (req, res) => {
       action: "ADDED"
     });
 
+    const user = await User.findById(userId);
+    const subscription = await buildSubscriptionResponse(user);
+    
     res.json({
+      status: 1,
       message: "Emergency contact added",
       contact,
+      subscription
     });
 
   } catch (error) {

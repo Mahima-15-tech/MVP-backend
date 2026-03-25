@@ -13,33 +13,28 @@ cron.schedule("0 0 * * *", async () => {
 
     const subs = await Subscription.find({
       status: "ACTIVE",
+      planType: "YEARLY"
     });
 
     for (const sub of subs) {
 
-      // 🔴 TRIAL EXPIRED
-      if (sub.planType === "TRIAL" && today > sub.endDate) {
+      // ✅ ONLY YEARLY MONTHLY REFRESH
+      if (sub.nextRenewalDate && today >= sub.nextRenewalDate) {
 
-        console.log("⏳ Trial expired for:", sub.userId);
+        console.log("🔄 Yearly monthly refresh for:", sub.userId);
 
-        // 1️⃣ Reset unused credits
-        await resetCredits(sub.userId);
+        await resetCredits(sub.userId);      // old remove
+        await addCredits(sub.userId, 3, "RENEWAL"); // new 3
 
-        // 2️⃣ Mark subscription expired
-        sub.status = "EXPIRED";
+        const next = new Date(sub.nextRenewalDate);
+        next.setMonth(next.getMonth() + 1);
+
+        sub.nextRenewalDate = next;
         await sub.save();
-
-        // 3️⃣ Update user status
-        await User.findByIdAndUpdate(sub.userId, {
-          subscriptionStatus: "EXPIRED",
-        });
-
-        console.log("❌ Trial marked expired for:", sub.userId);
       }
-
     }
 
   } catch (error) {
-    console.error("❌ Subscription cron error:", error.message);
+    console.error("❌ Cron error:", error.message);
   }
 });

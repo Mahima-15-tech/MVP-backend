@@ -7,11 +7,11 @@ const { formatPhone } = require("../../utils/phoneFormatter");
 exports.addContact = async (req, res) => {
   try {
 
-    const { name, phone, relation } = req.body;
+    const { name, phone, countryCode } = req.body;
     const userId = req.user.userId;
 
     // 🔹 Format phone to E.164 (+65...)
-    const formattedPhone = formatPhone(phone);
+    const formattedPhone = formatPhone(countryCode, phone);
 
     if (!formattedPhone) {
       return res.status(400).json({
@@ -60,7 +60,7 @@ exports.addContact = async (req, res) => {
       userId,
       name,
       phone: formattedPhone,
-      relation,
+      
     });
 
     // 🔥 History Entry
@@ -68,7 +68,6 @@ exports.addContact = async (req, res) => {
       userId,
       name,
       phone: formattedPhone,
-      relation,
       action: "ADDED"
     });
 
@@ -105,7 +104,7 @@ exports.updateContact = async (req, res) => {
   try {
 
     const { id } = req.params;
-    const { name, phone, relation } = req.body;
+    const { name, phone } = req.body;
     const userId = req.user.userId;
 
     const contact = await EmergencyContact.findOne({
@@ -122,7 +121,6 @@ exports.updateContact = async (req, res) => {
       userId,
       name: contact.name,
       phone: contact.phone,
-      relation: contact.relation,
       action: "UPDATED"
     });
 
@@ -143,7 +141,7 @@ exports.updateContact = async (req, res) => {
 
     contact.name = name || contact.name;
     contact.phone = updatedPhone;
-    contact.relation = relation || contact.relation;
+    
 
     await contact.save();
 
@@ -180,7 +178,6 @@ exports.deleteContact = async (req, res) => {
       userId,
       name: contact.name,
       phone: contact.phone,
-      relation: contact.relation,
       action: "DELETED"
     });
 

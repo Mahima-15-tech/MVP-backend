@@ -62,7 +62,7 @@ exports.sendOtp = async (req, res) => {
 
 exports.verifyOtp = async (req, res) => {
 
-  let { phone, countryCode, otp, language  } = req.body;
+  let { phone, countryCode, otp } = req.body;
 
   if (!phone || !countryCode) {
     return res.status(400).json({
@@ -86,17 +86,9 @@ exports.verifyOtp = async (req, res) => {
     });
   }
 
-  const updateData = {
-    isVerified: true
-  };
-  
-  if (language) {
-    updateData.language = language; // 🔥 NEW
-  }
-  
   const user = await User.findOneAndUpdate(
     { phone: phoneNumber },
-    updateData,
+    { isVerified: true },
     { new: true }
   );
 
@@ -124,7 +116,7 @@ exports.verifyOtp = async (req, res) => {
   user.emailCompleted && user.nameCompleted;
 
 res.json({
-  status: isProfileComplete ? 2 : 1, // 🔥 MAIN FIX
+  status: isProfileComplete ? 2 : 1,
   token,
   onboarding: {
     emailCompleted: user.emailCompleted,

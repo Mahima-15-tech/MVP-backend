@@ -120,8 +120,11 @@ exports.verifyOtp = async (req, res) => {
 
   const subscription = await buildSubscriptionResponse(user);
 
+  const isProfileComplete =
+  user.emailCompleted && user.nameCompleted;
+
 res.json({
-  status: 1,
+  status: isProfileComplete ? 2 : 1, // 🔥 MAIN FIX
   token,
   onboarding: {
     emailCompleted: user.emailCompleted,

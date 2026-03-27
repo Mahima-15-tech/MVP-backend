@@ -62,7 +62,7 @@ exports.sendOtp = async (req, res) => {
 
 exports.verifyOtp = async (req, res) => {
 
-  let { phone, countryCode, otp } = req.body;
+  let { phone, countryCode, otp, language  } = req.body;
 
   if (!phone || !countryCode) {
     return res.status(400).json({
@@ -86,9 +86,17 @@ exports.verifyOtp = async (req, res) => {
     });
   }
 
+  const updateData = {
+    isVerified: true
+  };
+  
+  if (language) {
+    updateData.language = language; // 🔥 NEW
+  }
+  
   const user = await User.findOneAndUpdate(
     { phone: phoneNumber },
-    { isVerified: true },
+    updateData,
     { new: true }
   );
 

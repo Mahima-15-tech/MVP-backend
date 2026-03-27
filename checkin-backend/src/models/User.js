@@ -71,6 +71,11 @@ alertVoice: {
     type: String,
   },
 
+  timezone: {
+    type: String,
+    default: "UTC"
+  }
+
 
 
  },

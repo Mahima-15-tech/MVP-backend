@@ -64,10 +64,10 @@ export default function Login() {
       </p>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-2 rounded-lg mb-6 text-center">
-          {error}
-        </div>
-      )}
+  <div className="bg-[#ee6a59]/10 border border-[#ee6a59] text-[#ee6a59] text-sm px-4 py-2 rounded-lg mb-6 text-center">
+    {error}
+  </div>
+)}
 
       <form onSubmit={handleSubmit} className="space-y-7">
 
@@ -78,13 +78,13 @@ export default function Login() {
           </label>
 
           <input
-            type="email"
-            placeholder="admin@solo.app"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="w-full mt-2 px-0 py-2 text-[#606060] placeholder-[#b6b9b3] border-b border-[#7f8f93]/50 focus:border-[#002c3e] focus:outline-none bg-transparent"
-          />
+  type="email"
+  placeholder="admin@solo.app"
+  value={email}
+  onChange={(e) => setEmail(e.target.value)}
+  required
+  className="w-full mt-2 px-0 py-2 text-[#606060] placeholder-[#b6b9b3] border-b border-[#7f8f93]/50 focus:border-[#0cb4ab] focus:outline-none bg-transparent"
+/>
         </div>
 
         {/* Password */}
@@ -95,14 +95,14 @@ export default function Login() {
 
           <div className="relative mt-2">
 
-            <input
-              type={showPassword ? "text" : "password"}
-              placeholder="Enter password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full px-0 py-2 pr-10 text-[#606060] placeholder-[#b6b9b3] border-b border-[#7f8f93]/50 focus:border-[#002c3e] focus:outline-none bg-transparent"
-            />
+          <input
+  type={showPassword ? "text" : "password"}
+  placeholder="Enter password"
+  value={password}
+  onChange={(e) => setPassword(e.target.value)}
+  required
+  className="w-full px-0 py-2 pr-10 text-[#606060] placeholder-[#b6b9b3] border-b border-[#7f8f93]/50 focus:border-[#0cb4ab] focus:outline-none bg-transparent"
+/>
 
             <button
               type="button"

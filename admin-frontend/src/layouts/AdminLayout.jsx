@@ -1,5 +1,7 @@
 import Sidebar from "../components/Sidebar";
 import Topbar from "../components/Topbar";
+import ScrollToTop from "../components/ScrollToTop";
+
 
 export default function AdminLayout({ children }) {
   return (
@@ -16,24 +18,41 @@ export default function AdminLayout({ children }) {
 
         {/* Curved Dashboard Container */}
         <div className="flex-1 relative -mt-2">
-        <div
+
+{/* 🔹 BACKGROUND + TOP BORDER */}
+<div 
   className="
-  absolute inset-0
+  
+  absolute inset-0 
   bg-[#d8dbd6]
   rounded-tl-[90px]
-  -mt-4
-  ml-6
+  -mt-3
+  ml-4
+  shadow-[inset_0_10px_0px_rgba(198,203,195,0.8)]
+  z-0
+  pointer-events-none
+"
+/>
+
+{/* 🔹 SCROLL CONTENT */}
+<ScrollToTop />
+
+<div id="main-scroll"
+  className="
+  absolute
+  inset-0
+  ml-10
   pt-10
   px-10
   pb-10
   overflow-y-auto
-  shadow-[inset_0_8px_0px_rgba(198,203,195,0.6),inset_6px_0_10px_rgba(198,203,195,0.6)]
+  z-10
 "
 >
-            {children}
-          </div>
+  {children}
+</div>
 
-        </div>
+</div>
 
       </div>
 

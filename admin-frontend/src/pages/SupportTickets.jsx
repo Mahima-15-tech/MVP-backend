@@ -12,6 +12,7 @@ const [selected,setSelected] = useState(null);
 const [page,setPage] = useState(1);
 const itemsPerPage = 8;
 
+
 useEffect(()=>{
 fetchTickets();
 },[]);
@@ -26,6 +27,13 @@ setTickets(res.data);
 }catch(err){
 console.error(err);
 }
+};
+
+const getEmptyMessage = () => {
+  if (filter === "OPEN") return "No open requests";
+  if (filter === "IN_PROGRESS") return "No issues in progress";
+  if (filter === "RESOLVED") return "No resolved issues";
+  return "No records found";
 };
 
 /* ================= FILTER ================= */
@@ -72,7 +80,7 @@ return(
 className="
 bg-[#B5B9B2]
 rounded-4xl
-px-8
+px-6
 py-5
 flex
 items-center
@@ -139,11 +147,17 @@ ${filter===s.value
 
 <div className="grid grid-cols-3 gap-6">
 
-<Card label="Open Requests" value={open} error/>
+<div onClick={()=>setFilter("OPEN")} className="cursor-pointer">
+  <Card label="Open Requests" value={open} error active={filter==="OPEN"} />
+</div>
 
-<Card label="In Progress" value={progress} error/>
+<div onClick={()=>setFilter("IN_PROGRESS")} className="cursor-pointer">
+  <Card label="In Progress" value={progress} error active={filter==="IN_PROGRESS"} />
+</div>
 
-<Card label="Resolved" value={resolved}/>
+<div onClick={()=>setFilter("RESOLVED")} className="cursor-pointer">
+  <Card label="Resolved" value={resolved} active={filter==="RESOLVED"} />
+</div>
 
 </div>
 
@@ -153,113 +167,72 @@ ${filter===s.value
 
 <div className="bg-white rounded-4xl overflow-hidden">
 
-<table className="w-full text-[16px]">
+{filtered.length === 0 ? (
 
-<thead className="bg-[#78bcc4] text-white">
+  // ✅ SIMPLE TEXT (NO BOX)
+  <div className="py-16 text-center text-[#9aa7b2] text-lg font-medium">
+    {getEmptyMessage()}
+  </div>
 
-<tr>
+) : (
 
-<th className="px-6 py-5 text-left">User ID</th>
+  <table className="w-full text-[16px]">
 
-<th className="px-6 py-5 text-left">User Name</th>
+    <thead className="bg-[#78bcc4] text-white">
+      <tr>
+        <th className="px-6 py-5 text-left">User ID</th>
+        <th className="px-6 py-5 text-left">User Name</th>
+        <th className="px-6 py-5 text-left">Email</th>
+        <th className="px-6 py-5 text-left">Subject</th>
+        <th className="px-6 py-5 text-left">Status</th>
+        <th className="px-6 py-5 text-left">Date</th>
+        <th className="px-6 py-5 text-left">View</th>
+      </tr>
+    </thead>
 
-<th className="px-6 py-5 text-left">Email</th>
+    <tbody className="text-[#5a6c7d]">
+      {paginatedData.map((t,i)=>(
 
-<th className="px-6 py-5 text-left">Subject</th>
+        <tr key={i} className="border-b border-[#e5e5e5] hover:bg-[#f7f8f3]">
 
-<th className="px-6 py-5 text-left">Status</th>
+          <td className="px-6 py-4">{t.userId?.phone || "-"}</td>
 
-<th className="px-6 py-5 text-left">Date</th>
+          <td className="px-6 py-4 font-semibold">
+            {t.userId?.name || "User"}
+          </td>
 
-<th className="px-6 py-5 text-left">View</th>
+          <td className="px-6 py-4">{t.email}</td>
 
-</tr>
+          <td className="px-6 py-4">{t.subject}</td>
 
-</thead>
+          <td className={`px-6 py-4 font-semibold
+            ${t.status==="OPEN"
+              ? "text-[#ee6a59]"
+              : t.status==="IN_PROGRESS"
+              ? "text-[#f59e0b]"
+              : "text-[#78bcc4]"
+            }`}>
+            {t.status.toLowerCase().replace("_"," ").replace(/^\w/, c => c.toUpperCase())}
+          </td>
 
+          <td className="px-6 py-4">
+            {new Date(t.createdAt).toLocaleDateString()}
+          </td>
 
-<tbody className="text-[#5a6c7d]">
+          <td className="px-6 py-4">
+            <button onClick={()=>setSelected(t)} className="text-[#78bcc4]">
+              <Eye size={18}/>
+            </button>
+          </td>
 
-{paginatedData.map((t,i)=>(
+        </tr>
 
-<tr
-key={i}
-className="border-b border-[#e5e5e5] hover:bg-[#f7f8f3]"
->
+      ))}
+    </tbody>
 
-<td className="px-6 py-4">
+  </table>
 
-{t.userId?.phone || "-"}
-
-</td>
-
-<td className="px-6 py-4 font-semibold">
-
-{t.userId?.name || "User"}
-
-</td>
-
-<td className="px-6 py-4">
-
-{t.email}
-
-</td>
-
-<td className="px-6 py-4">
-
-{t.subject}
-
-</td>
-
-<td
-className={`
-px-6 py-4 font-semibold
-${t.status==="OPEN"
-? "text-[#ee6a59]"
-: t.status==="IN_PROGRESS"
-? "text-[#f59e0b]"
-: "text-[#78bcc4]"
-}
-`}
->
-
-{t.status
-.toLowerCase()
-.replace("_"," ")
-.replace(/^\w/, c => c.toUpperCase())
-}
-
-</td>
-
-<td className="px-6 py-4">
-
-{new Date(t.createdAt).toLocaleDateString()}
-
-</td>
-
-<td className="px-6 py-4">
-
-<button
-onClick={()=>setSelected(t)}
-className="text-[#78bcc4]"
->
-
-<Eye size={18}/>
-
-</button>
-
-</td>
-
-</tr>
-
-))}
-
-</tbody>
-
-</table>
-
-
-
+)}
 
 </div>
 
@@ -330,7 +303,7 @@ return(
 
 </p>
 
-<p className={`text-6xl font-bold mt-2 ${error ? "text-[#ee6a59]" : "text-[#002c3e]"}`}>
+<p className={`text-[48px] font-semibold mt- ${error ? "text-[#ee6a59]" : "text-[#002c3e]"}`}>
 
 {value}
 

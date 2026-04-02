@@ -123,7 +123,7 @@ export default function Dashboard() {
 </h2>
 
 <div className="flex-1 flex items-center justify-center">
-  <div className="w-full h-[390px] mt-11 ">
+  <div className="w-full h-[390px] mt-7 ">
     <Doughnut data={pieData} options={pieOptions}  />
   </div>
 </div>
@@ -223,11 +223,11 @@ export default function Dashboard() {
 
         <div className="bg-[#f5f5f5] rounded-[30px] p-8">
 
-        <h2 className="text-3xl font-semibold text-[#002c3e] -mt-2  mb-12 tracking-wide">
+        <h2 className="text-3xl font-semibold text-[#002c3e] -mt-1   tracking-wide">
   System Activity <br /> Today
 </h2>
 
-          <div className="space-y-5 ">
+          <div className="space-y-4 ">
 
           <Activity label="Missed Check-ins" value={data.missedToday} color="#ee6a59" />
 
@@ -269,19 +269,18 @@ function Activity({ label, value, color }) {
 
   return (
 
-    <div className="flex justify-between items-center bg-[#e8e8e8] px-5 py-7 mt-2 rounded-3xl">
+    <div className="flex justify-between items-center bg-[#e8e8e8] px-5 py-5 mt-7 rounded-3xl">
 
       <span className="text-[#5a6c7d] text-md font-semibold">
         {label}
       </span>
 
-      <span
-        className="text-white text-sm px-2 py-1 font-bold rounded-full"
-        style={{ background: color }}
-      >
-        {value}
-      </span>
-
+  <span
+  className="text-white text-sm font-bold flex items-center justify-center rounded-full min-w-[36px] h-[36px] px-3"
+  style={{ background: color }}
+>
+  {value > 99 ? "99+" : value}
+</span>
     </div>
   );
 }

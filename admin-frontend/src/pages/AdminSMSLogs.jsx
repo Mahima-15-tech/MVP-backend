@@ -8,89 +8,202 @@ import { CalendarDays } from "lucide-react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
-
 function InlineDatePicker({ value, onChange, label }) {
 
-    const [open,setOpen] = useState(false);
-    const [tempDate,setTempDate] = useState(value);
-  
-    const ref = useRef();
-  
-    useEffect(()=>{
-      const handleClickOutside = (e)=>{
-        if(ref.current && !ref.current.contains(e.target)){
-          setOpen(false);
-        }
-      };
-  
-      document.addEventListener("mousedown",handleClickOutside);
-      return ()=>document.removeEventListener("mousedown",handleClickOutside);
-    },[]);
-  
-    return(
-      <div className="relative" ref={ref}>
-  
-        <div
-          onClick={()=>setOpen(!open)}
-          className="flex items-center bg-white rounded-full overflow-hidden cursor-pointer"
-        >
-  
-          <span className="px-6 text-white bg-[#78bcc4] py-4 font-semibold">
-            {label}
-          </span>
-  
-          <div className="px-4 py-3 flex items-center gap-2 text-[#5a6c7d]">
-  
-            {value
-              ? new Date(value).toLocaleDateString("en-GB").replaceAll("/", " | ")
-              : "DD | MM | YY"
-            }
-  
-            <CalendarDays size={18} className="text-[#002c3e]" />
-  
-          </div>
-  
+  const [open, setOpen] = useState(false);
+  const [tempDate, setTempDate] = useState(value);
+
+  const [showMonth, setShowMonth] = useState(false);
+  const [showYear, setShowYear] = useState(false);
+
+  const ref = useRef();
+
+  const years = Array.from({ length: 50 }, (_, i) => 2000 + i);
+  const months = [
+    "Jan","Feb","Mar","Apr","May","Jun",
+    "Jul","Aug","Sep","Oct","Nov","Dec"
+  ];
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) {
+        setOpen(false);
+        setShowMonth(false);
+        setShowYear(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div className="relative" ref={ref}>
+
+      {/* INPUT */}
+      <div
+        onClick={() => setOpen(!open)}
+        className="flex items-center bg-white rounded-full overflow-hidden cursor-pointer hover:shadow-md transition"
+      >
+
+        {/* LABEL */}
+        <span className="px-4 py-2.5 text-white bg-[#78bcc4] font-semibold text-sm">
+          {label}
+        </span>
+
+        {/* DATE */}
+        <div className="px-4 py-2 flex items-center gap-1 text-[#5a6c7d] text-sm min-w-[140px]">
+
+          {value
+            ? new Date(value).toLocaleDateString("en-GB").replaceAll("/", " | ")
+            : "DD | MM | YY"
+          }
+
+          <CalendarDays size={16} className="text-[#002c3e] ml-auto" />
+
         </div>
-  
-        {open && (
-          <div className="absolute top-[60px] left-0 z-50 bg-white rounded-3xl p-3 w-64 shadow-xl">
-  
-            <DatePicker
-              selected={tempDate}
-              onChange={(date)=>setTempDate(date)}
-              inline
-            />
-  
-            <div className="flex justify-between mt-4">
-  
-              <button
-                onClick={()=>{
-                  setTempDate(null);
-                  setOpen(false);
-                }}
-                className="bg-[#B5B9B2] text-white px-6 py-2 rounded-full"
-              >
-                Cancel
-              </button>
-  
-              <button
-                onClick={()=>{
-                  onChange(tempDate);
-                  setOpen(false);
-                }}
-                className="bg-[#002c3e] text-white px-6 py-2 rounded-full"
-              >
-                Confirm
-              </button>
-  
-            </div>
-  
-          </div>
-        )}
-  
+
       </div>
-    );
-  }
+
+      {/* DROPDOWN */}
+      {open && (
+        <div className="absolute top-[55px] left-0 z-50 bg-white rounded-2xl p-4 w-[280px] shadow-[0_10px_30px_rgba(0,0,0,0.15)]">
+
+          <DatePicker
+            selected={tempDate}
+            onChange={(date) => setTempDate(date)}
+            inline
+
+            renderCustomHeader={({
+              date,
+              changeYear,
+              changeMonth,
+              decreaseMonth,
+              increaseMonth,
+            }) => (
+
+              <div className="flex items-center justify-between mb-3">
+
+                {/* LEFT */}
+                <button
+                  onClick={decreaseMonth}
+                  className="w-8 h-8 rounded-full bg-[#f1f3f4] hover:bg-[#e5e7eb]"
+                >
+                  ←
+                </button>
+
+                {/* CENTER */}
+                <div className="flex gap-2 relative">
+
+                  {/* MONTH */}
+                  <div className="relative">
+                    <div
+                      onClick={() => {
+                        setShowMonth(!showMonth);
+                        setShowYear(false);
+                      }}
+                      className="bg-[#f5f5f5] px-3 py-1 rounded-full text-sm font-semibold cursor-pointer"
+                    >
+                      {months[date.getMonth()]}
+                    </div>
+
+                    {showMonth && (
+                      <div className="absolute top-10 left-0 bg-white shadow-lg rounded-xl max-h-40 overflow-y-auto z-50">
+                        {months.map((m, i) => (
+                          <div
+                            key={m}
+                            onClick={() => {
+                              changeMonth(i);
+                              setShowMonth(false);
+                            }}
+                            className="px-4 py-2 hover:bg-[#0cb4ab]/10 cursor-pointer"
+                          >
+                            {m}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* YEAR */}
+                  <div className="relative">
+                    <div
+                      onClick={() => {
+                        setShowYear(!showYear);
+                        setShowMonth(false);
+                      }}
+                      className="bg-[#f5f5f5] px-3 py-1 rounded-full text-sm font-semibold cursor-pointer"
+                    >
+                      {date.getFullYear()}
+                    </div>
+
+                    {showYear && (
+                      <div className="absolute top-10 left-0 bg-white shadow-lg rounded-xl max-h-40 overflow-y-auto z-50">
+                        {years.map((y) => (
+                          <div
+                            key={y}
+                            onClick={() => {
+                              changeYear(y);
+                              setShowYear(false);
+                            }}
+                            className={`px-4 py-2 cursor-pointer ${
+                              y === date.getFullYear()
+                                ? "bg-[#0cb4ab] text-white"
+                                : "hover:bg-[#0cb4ab]/10"
+                            }`}
+                          >
+                            {y}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                </div>
+
+                {/* RIGHT */}
+                <button
+                  onClick={increaseMonth}
+                  className="w-8 h-8 rounded-full bg-[#f1f3f4] hover:bg-[#e5e7eb]"
+                >
+                  →
+                </button>
+
+              </div>
+            )}
+          />
+
+          {/* FOOTER */}
+          <div className="flex justify-between mt-4">
+
+            <button
+              onClick={() => {
+                setTempDate(null);
+                setOpen(false);
+              }}
+              className="bg-[#B5B9B2] text-white px-5 py-2 rounded-full text-sm"
+            >
+              Cancel
+            </button>
+
+            <button
+              onClick={() => {
+                onChange(tempDate);
+                setOpen(false);
+              }}
+              className="bg-[#002c3e] text-white px-5 py-2 rounded-full text-sm"
+            >
+              Confirm
+            </button>
+
+          </div>
+
+        </div>
+      )}
+
+    </div>
+  );
+}
 
 
 
@@ -220,7 +333,7 @@ return(
 
 
 {/* ================= FILTER BAR ================= */}
-<div className="bg-[#B5B9B2] rounded-4xl px-10  py-5 flex items-center gap-5 flex-wrap">
+<div className="bg-[#B5B9B2] rounded-4xl px-5  py-5 flex items-center gap-3 flex-wrap">
 {/* MONTH */}
 
 <div className="relative">
@@ -230,7 +343,7 @@ onClick={()=>setOpenMonth(!openMonth)}
 className="
 bg-[#002c3e]
 text-white
-px-8
+px-5
 py-3
 rounded-full
 flex
@@ -501,7 +614,7 @@ Next
 {titleMonth} Revenue
 
 <p className="text-sm text-[#5a6c7d] font-normal">
-* Net after 15% app store commission
+<sup className="raletive -top-1">*</sup>Net after 15% app store commission
 </p>
 
 </h2>
@@ -516,7 +629,7 @@ Gross <span className="text-[#002c3e] text-3xl ml-1 ">${grossTotal.toFixed(2)}</
 
 <span className="bg-[#f5f5f5] px-6 py-2 rounded-full text-[#5a6c7d] font-semibold">
 
-Net * <span className="text-[#002c3e] text-3xl ml-1 "> ${netTotal.toFixed(2)}</span>
+Net<sup className="raletive -top-1">*</sup><span className="text-[#002c3e] text-3xl ml-1 "> ${netTotal.toFixed(2)}</span>
 
 </span>
 
@@ -544,7 +657,7 @@ return(
 
 </p>
 
-<p className={`text-5xl font-bold mt-2 ${error ? "text-[#ee6a59]" : "text-[#002c3e]"}`}>
+<p className={`text-[48px] font-semibold mt-2 ${error ? "text-[#ee6a59]" : "text-[#002c3e]"}`}>
 
 {value}
 

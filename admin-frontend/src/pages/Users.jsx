@@ -188,7 +188,7 @@ className="bg-white rounded-full px-6 py-3 w-[340px] outline-none text-[#002c3e]
 
 <button
 onClick={fetchUsers}
-className="bg-white w-17 h-10  rounded-full flex items-center justify-center"
+className="bg-white w-20 h-10  rounded-full flex items-center justify-center"
 >
 <img 
   src="/exchange.png" 
@@ -450,35 +450,65 @@ Next
 
 {confirmUser && (
 
-<div className="fixed inset-0 bg-black/40 flex items-center justify-center">
+<div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
 
-<div className="bg-white p-6 rounded-xl w-[320px]">
+  <div className="bg-white rounded-[28px] w-[380px] p-8 shadow-[0_20px_40px_rgba(0,0,0,0.15)]">
 
-<p className="text-center font-semibold mb-4">
-{confirmUser.status==="ACTIVE"
-? "Ban this user?"
-: "Unban this user?"}
-</p>
+    {/* TITLE */}
+    <h2 className="text-xl font-semibold text-[#002c3e] text-center mb-3">
+      {confirmUser.status==="ACTIVE"
+        ? "Ban User"
+        : "Unban User"}
+    </h2>
 
-<div className="flex justify-between">
+    {/* SUBTEXT */}
+    <p className="text-[#5a6c7d] text-center mb-8 text-sm leading-relaxed">
+      {confirmUser.status==="ACTIVE"
+        ? "Are you sure you want to ban this user? They will lose access immediately."
+        : "This user will regain access to the platform."}
+    </p>
 
-<button
-onClick={()=>setConfirmUser(null)}
-className="px-4 py-2 bg-gray-200 rounded"
->
-Cancel
-</button>
+    {/* ACTION BUTTONS */}
+    <div className="flex gap-4 justify-center">
 
-<button
-onClick={()=>toggleBan(confirmUser)}
-className="px-4 py-2 bg-red-500 text-white rounded"
->
-Confirm
-</button>
+      {/* CANCEL */}
+      <button
+        onClick={()=>setConfirmUser(null)}
+        className="
+        px-8 py-3
+        rounded-full
+        bg-[#b6b9b3]
+        text-white
+        font-semibold
+        hover:opacity-90
+        transition
+        "
+      >
+        Cancel
+      </button>
 
-</div>
+      {/* CONFIRM */}
+      <button
+        onClick={()=>toggleBan(confirmUser)}
+        className={`
+        px-8 py-3
+        rounded-full
+        font-semibold
+        text-white
+        transition
+        ${
+          confirmUser.status==="ACTIVE"
+          ? "bg-[#ee6a59] hover:opacity-90"
+          : "bg-[#002c3e] hover:opacity-90"
+        }
+        `}
+      >
+        {confirmUser.status==="ACTIVE" ? "Ban User" : "Unban"}
+      </button>
 
-</div>
+    </div>
+
+  </div>
 
 </div>
 
@@ -503,7 +533,7 @@ return(
 {title}
 </p>
 
-<p className={`text-5xl font-semibold mt-2 tracking-wide ${red?"text-[#ee6a59]":"text-[#002c3e]"}`}>
+<p className={`text-[48px] font-semibold  tracking-wide ${red?"text-[#ee6a59]":"text-[#002c3e]"}`}>
 {value}
 </p>
 

@@ -58,7 +58,7 @@ return(
 {/* LEFT */}
 <div className="w-[75%] px-10 py-4">
 
-<div className="grid grid-cols-3 gap-y-5">
+<div className="grid grid-cols-3 gap-x-12 gap-y-6">
 
 {/* PHONE */}
 <Field label="Phone" edit={edit}>
@@ -96,11 +96,11 @@ className=" text-[#002c3e] text-xl font-semibold w-42 bg-transparent"
 <input
 value={form.email || ""}
 onChange={e=>setForm({...form,email:e.target.value})}
-className=" text-[#002c3e] text-xl font-semibold w-42 bg-transparent"
+className="text-[#002c3e] text-xl font-semibold bg-transparent w-full break-all"
 />
 
-<span className="text-[#002c3e] text-xl  font-semibold">
-{profile.email}
+<span className="text-[#002c3e] text-xl font-semibold break-all leading-snug max-w-[350px]">
+  {profile.email}
 </span>
 </Field>
 
@@ -134,26 +134,38 @@ className=" text-[#002c3e] text-xl font-semibold w-42 bg-transparent"
 
 <div className="relative">
 
-<div className="w-32 h-32 rounded-full border-4 border-[#78bcc4] overflow-hidden">
-<img
-src={form.profileImage || "https://i.pravatar.cc/200"}
-className="w-full h-full object-cover"
-/>
-</div>
+  {/* IMAGE */}
+  <div className="w-36 h-36 rounded-full border-[5px] border-[#78bcc4] overflow-hidden shadow-md">
+    <img
+      src={form.profileImage || "https://i.pravatar.cc/200"}
+      className="w-full h-full object-cover"
+    />
+  </div>
 
-<button
-onClick={()=>fileRef.current.click()}
-className="absolute bottom-0 right-0 bg-[#002c3e] p-2 rounded-full text-white"
->
-<Camera size={16}/>
-</button>
+  {/* CAMERA BUTTON */}
+  <button
+    onClick={()=>fileRef.current.click()}
+    className="
+    absolute bottom-4 -right-3
+    w-10 h-10
+    flex items-center justify-center
+    rounded-full
+    bg-white
+    border-2 border-[#78bcc4]
+    shadow-md
+    text-[#002c3e]
+    hover:scale-105 transition
+    "
+  >
+    <Camera size={18}/>
+  </button>
 
-<input
-type="file"
-ref={fileRef}
-hidden
-onChange={handleImage}
-/>
+  <input
+    type="file"
+    ref={fileRef}
+    hidden
+    onChange={handleImage}
+  />
 
 </div>
 
@@ -222,22 +234,25 @@ Confirm
 
 function Field({ label, edit, children }) {
 
-    const items = Array.isArray(children) ? children : [children];
-    
-    const input = items[0];
-    const display = items[1];
-    
-    return (
-    <div>
-      <p className="text-[#5a6c7d] text-lg font-semibold">{label}</p>
-    
+  const items = Array.isArray(children) ? children : [children];
+
+  const input = items[0];
+  const display = items[1];
+
+  return (
+    <div className="flex flex-col gap-1">
+
+      <p className="text-[#5a6c7d] text-sm font-semibold ">
+        {label}
+      </p>
+
       {edit
         ? input
-        : <div className="text-[#002c3e] text-2xl font-semibold mt-1">
+        : <div className="text-[#002c3e] text-xl font-semibold break-words">
             {display}
           </div>
       }
-    
+
     </div>
-    );
-    }
+  );
+}

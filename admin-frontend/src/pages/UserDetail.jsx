@@ -32,11 +32,23 @@ export default function UserDetail() {
   const { id } = useParams();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("overview");
-
+  const [activeTab, setActiveTab] = useState("User Overview");
+  const [showHistory, setShowHistory] = useState(false);
+  const [showContactHistory, setShowContactHistory] = useState(false);
   useEffect(() => {
+    const el = document.getElementById("main-scroll");
+  
+    if (el) {
+      // 👇 delay add karo (IMPORTANT)
+      setTimeout(() => {
+        el.scrollTop = 0;
+      }, 0);
+    }
+  
     fetchUser();
-  }, []);
+  }, [id]); // 👈 id dependency bhi add karo
+
+
 
   const fetchUser = async () => {
     try {
@@ -125,11 +137,15 @@ export default function UserDetail() {
         {/* CONTENT CARD */}
         <div className="bg-white rounded-[30px] border border-[#e6e6e6] overflow-hidden">
           {activeTab === "User Overview" && <Overview data={data} />}
-          {activeTab === "Subscription" && <Subscription data={data} />}
+          {activeTab === "Subscription" &&  <Subscription data={data} showHistory={showHistory} setShowHistory={setShowHistory} />}
           {/* {activeTab === "subscription-history" && (
             <SubscriptionHistory data={data} />
           )} */}
-          {activeTab === "Contacts" && <Contacts data={data} />}
+          {activeTab === "Contacts" && <Contacts 
+    data={data} 
+    showContactHistory={showContactHistory} 
+    setShowContactHistory={setShowContactHistory} 
+  />}
           {activeTab === "Check-ins" && (
             <Checkin data={data} refresh={fetchUser} />
           )}
@@ -320,7 +336,7 @@ function Overview({ data }) {
         
         }
 
-function Subscription({ data }) {
+function Subscription({ data , showHistory, setShowHistory}) {
 
   const s = data.subscription;
 
@@ -344,9 +360,12 @@ function Subscription({ data }) {
           Subscription Details
         </h2>
 
-        <button className="bg-[#002c3e] text-white px-6 py-2 font-semibold tracking-wide rounded-full text-md">
-          History
-        </button>
+        <button
+  onClick={() => setShowHistory(true)}
+  className="bg-[#002c3e] text-white px-6 py-2 font-semibold tracking-wide rounded-full text-md"
+>
+  History
+</button>
 
       </div>
 
@@ -398,11 +417,59 @@ value={getExpiryDate(s.nextRenewalDate)}
 
       </div>
 
+      {showHistory && (
+  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+
+    <div className="bg-white w-[600px] max-h-[80vh] overflow-y-auto rounded-3xl p-6 relative">
+
+      {/* CLOSE BUTTON */}
+      <button
+        onClick={() => setShowHistory(false)}
+        className="absolute top-4 right-4 text-xl font-bold text-gray-500"
+      >
+        ✕
+      </button>
+
+      {/* TITLE */}
+      <h2 className="text-2xl font-semibold text-[#002c3e] mb-4">
+        Subscription History
+      </h2>
+
+      {/* HISTORY LIST */}
+      {data.subscriptionHistory?.length ? (
+        <div className="space-y-3">
+          {data.subscriptionHistory.map((s) => (
+            <div
+              key={s._id}
+              className="bg-[#f5f5f5] rounded-2xl p-4"
+            >
+              <p className="font-semibold text-[#002c3e]">
+                {s.previousPlan} → {s.newPlan}
+              </p>
+              <p className="text-sm text-[#5a6c7d] mt-1">
+                {new Date(s.createdAt).toLocaleString()}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-[#5a6c7d]">No history found</p>
+      )}
+
     </div>
+  </div>
+)}
+
+    </div>
+
+    
 
   );
 
+  
 }
+
+
 
 /* =====================================================
    SUBSCRIPTION HISTORY
@@ -438,7 +505,7 @@ function SubscriptionHistory({ data }) {
    CONTACTS
 ===================================================== */
 
-function Contacts({ data }) {
+function Contacts({ data, showContactHistory, setShowContactHistory  }) {
 
   const contacts = data.contacts || [];
 
@@ -451,8 +518,18 @@ function Contacts({ data }) {
   return (
 
     <div>
+<div className="flex justify-between items-center px-4 py-2">
 
-      <SectionTitle>Trusted Contacts</SectionTitle>
+<SectionTitle>Trusted Contacts</SectionTitle>
+
+<button
+  onClick={() => setShowContactHistory(true)}
+  className="bg-[#002c3e] text-white px-6 py-2 rounded-full font-semibold"
+>
+  History
+</button>
+
+</div>
 
       <div className="border border-[#CFD5DB] overflow-hidden">
 
@@ -556,6 +633,73 @@ function Contacts({ data }) {
         ))}
 
       </div>
+
+      {showContactHistory && (
+  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+
+    <div className="bg-white w-[650px] max-h-[80vh] overflow-y-auto rounded-3xl p-6 relative">
+
+      {/* CLOSE */}
+      <button
+        onClick={() => setShowContactHistory(false)}
+        className="absolute top-4 right-4 text-xl font-bold text-gray-500"
+      >
+        ✕
+      </button>
+
+      {/* TITLE */}
+      <h2 className="text-2xl font-semibold text-[#002c3e] mb-4">
+        Contact History
+      </h2>
+
+      {/* HISTORY */}
+      {data.contactHistory?.length ? (
+        <div className="space-y-3">
+
+          {data.contactHistory.map((c) => (
+
+            <div
+              key={c._id}
+              className="bg-[#f5f5f5] rounded-2xl p-4 flex justify-between items-center"
+            >
+
+              {/* LEFT */}
+              <div>
+                <p className="font-semibold text-[#002c3e]">
+                  {c.name} ({c.phone})
+                </p>
+
+                <p className="text-sm text-[#5a6c7d] mt-1">
+                  {new Date(c.createdAt).toLocaleString()}
+                </p>
+              </div>
+
+              {/* RIGHT (ACTION BADGE) */}
+              <span
+                className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                  c.action === "ADDED"
+                    ? "bg-green-100 text-green-700"
+                    : c.action === "UPDATED"
+                    ? "bg-yellow-100 text-yellow-700"
+                    : "bg-red-100 text-red-700"
+                }`}
+              >
+                {c.action}
+              </span>
+
+            </div>
+
+          ))}
+
+        </div>
+      ) : (
+        <p className="text-[#5a6c7d]">No history found</p>
+      )}
+
+    </div>
+
+  </div>
+)}
 
     </div>
 

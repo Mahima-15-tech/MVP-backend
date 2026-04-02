@@ -123,7 +123,15 @@ gap-2
 
 "
 >
-Consent <span >▼</span> 
+Consent  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    className={`w-4 h-4 transition ${open ? "rotate-180" : ""}`}
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+  >
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 10l5 5 5-5" />
+  </svg>
 </button>
 
 {open && (
@@ -182,7 +190,7 @@ hover:bg-[#6f736f]
 key={s}
 onClick={()=>setStatus(s)}
 className={`
-px-13
+px-12
 py-3
 rounded-full
 font-semibold
@@ -243,9 +251,9 @@ Loading...
 
 <th className="px-6 py-5 text-left">Consent</th>
 
-<th className="px-6 py-5 text-left">Alerts Type</th>
+<th className="px-6 py-5 text-left leading-5">Alerts Type</th>
 
-<th className="px-6 py-5 text-left">Alert Sent At</th>
+<th className="px-4 py-5 text-left leading-5">Alert Sent At</th>
 
 <th className="px-6 py-5 text-left">Status</th>
 
@@ -260,7 +268,27 @@ Loading...
 
 <tbody className="text-[#5a6c7d]">
 
-{data.map((row,i)=>(
+{data.length === 0 ? (
+
+<tr>
+  <td colSpan="8" className="text-center py-16">
+
+    <div className="flex flex-col items-center gap-3">
+
+      <p className="text-lg font-semibold text-[#5a6c7d]">
+        No SMS records found
+      </p>
+
+      <p className="text-sm text-[#a0a0a0]">
+        Try adjusting filters or search
+      </p>
+
+    </div>
+
+  </td>
+</tr>
+
+) : data.map((row,i)=>(
 
 <tr
 key={i}
@@ -390,7 +418,7 @@ return(
 {label}
 </p>
 
-<p className={`text-6xl font-semibold mt-2 ${error ? "text-[#ee6a59]" : "text-[#002c3e]"}`}>
+<p className={`text-[48px] font-semibold mt-2 ${error ? "text-[#ee6a59]" : "text-[#002c3e]"}`}>
 {value}
 </p>
 

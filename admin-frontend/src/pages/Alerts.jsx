@@ -352,7 +352,7 @@ function Card({label,value,error}){
 return(
 <div className="bg-[#f5f5f5] rounded-4xl px-8 py-6">
 <p className="text-[#5a6c7d] text-lg font-semibold">{label}</p>
-<p className={`text-5xl font-bold mt-2 ${error ? "text-[#ee6a59]" : "text-[#002c3e]"}`}>
+<p className={`text-[48px] font-semibold mt-2 ${error ? "text-[#ee6a59]" : "text-[#002c3e]"}`}>
 {value}
 </p>
 </div>

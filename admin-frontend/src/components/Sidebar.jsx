@@ -271,11 +271,10 @@ function SidebarItem({ to, label, icon: Icon, badge }) {
       </div>
 
       {badge && (
-        <span className="bg-[#ee6a59] text-[#f5f5f5] text-sm font-bold px-2 py-1 rounded-full">
-          {badge}
-        </span>
-      )}
-
+  <span className="bg-[#ee6a59] text-[#f5f5f5] text-sm font-bold flex items-center justify-center min-w-[32px] h-[32px] rounded-full px-2">
+    {badge}
+  </span>
+)}
 
 
 

@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import api from "../../api/axios";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function ChangePassword() {
+  
 
 const [form,setForm] = useState({
   currentPassword:"",
@@ -125,12 +127,13 @@ focus:border-[#002c3e]
 "
 />
 
-<span
+<button
+type="button"
 onClick={()=>setShowPassword(prev=>({...prev,current:!prev.current}))}
-className="absolute right-4 top-1/2 -translate-y-1/2 cursor-pointer"
+className="absolute right-4 top-1/2 -translate-y-1/2 text-[#7f8f93] hover:text-[#002c3e]"
 >
-👁️
-</span>
+{showPassword.current ? <EyeOff size={18}/> : <Eye size={18}/>}
+</button>
 </div>
 
 {/* NEW PASSWORD */}
@@ -151,12 +154,13 @@ focus:border-[#002c3e]
 "
 />
 
-<span
+<button
+type="button"
 onClick={()=>setShowPassword(prev=>({...prev,new:!prev.new}))}
-className="absolute right-4 top-1/2 -translate-y-1/2 cursor-pointer"
+className="absolute right-4 top-1/2 -translate-y-1/2 text-[#7f8f93] hover:text-[#002c3e]"
 >
-👁️
-</span>
+{showPassword.new ? <EyeOff size={18}/> : <Eye size={18}/>}
+</button>
 </div>
 
 {/* CONFIRM PASSWORD */}
@@ -177,12 +181,13 @@ ${isMismatch ? "border-red-400" : "border-[#d5dbe1]"}
 `}
 />
 
-<span
+<button
+type="button"
 onClick={()=>setShowPassword(prev=>({...prev,confirm:!prev.confirm}))}
-className="absolute right-4 top-1/2 -translate-y-1/2 cursor-pointer"
+className="absolute right-4 top-1/2 -translate-y-1/2 text-[#7f8f93] hover:text-[#002c3e] transition"
 >
-👁️
-</span>
+{showPassword.confirm ? <EyeOff size={18}/> : <Eye size={18}/>}
+</button>
 
 {/* ERROR */}
 {isMismatch && (

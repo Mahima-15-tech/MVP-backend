@@ -47,7 +47,7 @@ function InlineDatePicker({ value, onChange, label }) {
       >
 
         {/* LABEL */}
-        <span className="px-4 py-2.5 text-white bg-[#78bcc4] font-semibold text-sm">
+        <span className="px-4 py-3.5 text-white bg-[#78bcc4] font-semibold text-sm">
           {label}
         </span>
 
@@ -333,7 +333,7 @@ return(
 
 
 {/* ================= FILTER BAR ================= */}
-<div className="bg-[#B5B9B2] rounded-4xl px-5  py-5 flex items-center gap-3 flex-wrap">
+<div className="bg-[#B5B9B2] rounded-4xl px-8  py-5 flex items-center gap-3 flex-wrap">
 {/* MONTH */}
 
 <div className="relative">
@@ -343,14 +343,15 @@ onClick={()=>setOpenMonth(!openMonth)}
 className="
 bg-[#002c3e]
 text-white
-px-5
+px-10
 py-3
 rounded-full
-flex
+inline-flex
 items-center
-gap-3
+gap-2
 tracking-wide
 font-semibold
+whitespace-nowrap
 "
 >
 {months.find(m=>m.value===month)?.label} ▼

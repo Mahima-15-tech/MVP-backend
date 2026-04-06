@@ -180,7 +180,7 @@ function Info({ label, value }) {
       <p className="text-md font-semibold tracking-wide text-[#5a6c7d]">
         {label}
       </p>
-      <p className="text-xl font-semibold leading-8 tracking-wide text-[#002c3e]">
+      <p className="text-xl font-semibold leading-8 tracking-wide text-[#002c3e] wrap-break-word">
         {value || "—"}
       </p>
     </div>
@@ -284,7 +284,7 @@ function Overview({ data }) {
   
   </div>
   
-  <div className="grid grid-cols-4 gap-x-12 px-10 py-6">
+  <div className="grid grid-cols-4 gap-x-12 px-10 py-6 items-start">
   
   <Info label="Email" value={u.email}/>
   <Info label="Age" value={u.age}/>

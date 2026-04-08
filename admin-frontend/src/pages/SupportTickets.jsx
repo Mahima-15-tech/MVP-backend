@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import api from "../api/axios";
 import { Eye } from "lucide-react";
 import TicketModal from "../components/TicketModal";
+import EmptyState from "../components/EmptyState";
 
 export default function SupportTickets() {
 
@@ -164,75 +165,97 @@ ${filter===s.value
 
 
 {/* ================= TABLE ================= */}
-
-<div className="bg-white rounded-4xl overflow-hidden">
-
-{filtered.length === 0 ? (
-
-  // ✅ SIMPLE TEXT (NO BOX)
-  <div className="py-16 text-center text-[#9aa7b2] text-lg font-medium">
-    {getEmptyMessage()}
-  </div>
-
-) : (
+<div className="bg-white rounded-4xl overflow-hidden border border-[#e6e6e6]">
 
   <table className="w-full text-[16px]">
 
+    {/* ✅ HEADER ALWAYS VISIBLE */}
     <thead className="bg-[#78bcc4] text-white">
       <tr>
-        <th className="px-6 py-5 text-left">User ID</th>
-        <th className="px-6 py-5 text-left">User Name</th>
+        <th className="px-6 py-5 text-left first:rounded-tl-4xl">User ID</th>
+        <th className="px-3 py-5 text-left">User Name</th>
         <th className="px-6 py-5 text-left">Email</th>
         <th className="px-6 py-5 text-left">Subject</th>
         <th className="px-6 py-5 text-left">Status</th>
         <th className="px-6 py-5 text-left">Date</th>
-        <th className="px-6 py-5 text-left">View</th>
+        <th className="px-6 py-5 text-left last:rounded-tr-4xl">View</th>
       </tr>
     </thead>
 
     <tbody className="text-[#5a6c7d]">
-      {paginatedData.map((t,i)=>(
 
-        <tr key={i} className="border-b border-[#e5e5e5] hover:bg-[#f7f8f3]">
+      {/* ✅ EMPTY STATE INSIDE TABLE */}
+      {filtered.length === 0 ? (
 
-          <td className="px-6 py-4">{t.userId?.phone || "-"}</td>
+        <tr>
+          <td colSpan="7" className="py-20 text-center">
 
-          <td className="px-6 py-4 font-semibold">
-            {t.userId?.name || "User"}
+            <div className="flex flex-col items-center gap-2">
+
+              <p className="text-lg font-semibold text-[#5a6c7d]">
+                {getEmptyMessage()}
+              </p>
+
+              <p className="text-sm text-[#a0a0a0]">
+                Try adjusting filters or search
+              </p>
+
+            </div>
+
           </td>
-
-          <td className="px-6 py-4">{t.email}</td>
-
-          <td className="px-6 py-4">{t.subject}</td>
-
-          <td className={`px-6 py-4 font-semibold
-            ${t.status==="OPEN"
-              ? "text-[#ee6a59]"
-              : t.status==="IN_PROGRESS"
-              ? "text-[#f59e0b]"
-              : "text-[#78bcc4]"
-            }`}>
-            {t.status.toLowerCase().replace("_"," ").replace(/^\w/, c => c.toUpperCase())}
-          </td>
-
-          <td className="px-6 py-4">
-            {new Date(t.createdAt).toLocaleDateString()}
-          </td>
-
-          <td className="px-6 py-4">
-            <button onClick={()=>setSelected(t)} className="text-[#78bcc4]">
-              <Eye size={18}/>
-            </button>
-          </td>
-
         </tr>
 
-      ))}
+      ) : (
+
+        paginatedData.map((t,i)=>(
+
+          <tr
+            key={i}
+            className="border-b border-[#e5e5e5] hover:bg-[#f7f8f3] transition"
+          >
+
+            <td className="px-4 py-4">{t.userId?.phone || "-"}</td>
+
+            <td className="px-6 py-4 font-semibold">
+              {t.userId?.name || "User"}
+            </td>
+
+            <td className="px-6 py-4">{t.email}</td>
+
+            <td className="px-6 py-4">{t.subject}</td>
+
+            <td className={`px-6 py-4 font-semibold
+              ${t.status==="OPEN"
+                ? "text-[#ee6a59]"
+                : t.status==="IN_PROGRESS"
+                ? "text-[#f59e0b]"
+                : "text-[#78bcc4]"
+              }`}>
+              {t.status.toLowerCase().replace("_"," ").replace(/^\w/, c => c.toUpperCase())}
+            </td>
+
+            <td className="px-6 py-4">
+              {new Date(t.createdAt).toLocaleDateString()}
+            </td>
+
+            <td className="px-6 py-4">
+              <button
+                onClick={()=>setSelected(t)}
+                className="text-[#78bcc4]"
+              >
+                <Eye size={18}/>
+              </button>
+            </td>
+
+          </tr>
+
+        ))
+
+      )}
+
     </tbody>
 
   </table>
-
-)}
 
 </div>
 

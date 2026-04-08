@@ -64,7 +64,7 @@ export default function Login() {
       </p>
 
       {error && (
-  <div className="bg-[#ee6a59]/10 border border-[#ee6a59] text-[#ee6a59] text-sm px-4 py-2 rounded-lg mb-6 text-center">
+  <div className="bg-[#ee6a59]/20 border border-[#ee6a59]/20 text-[#ee6a59] text-sm font-semibold px-4 py-2 rounded-lg mb-6 text-center">
     {error}
   </div>
 )}
@@ -83,7 +83,7 @@ export default function Login() {
   value={email}
   onChange={(e) => setEmail(e.target.value)}
   required
-  className="w-full mt-2 px-0 py-2 text-[#606060] placeholder-[#b6b9b3] border-b border-[#7f8f93]/50 focus:border-[#0cb4ab] focus:outline-none bg-transparent"
+  className="w-full mt-2 px-0 py-2 text-[#002c3e] placeholder-[#b6b9b3] border-b border-[#b6b9b3] focus:border-[#0cb4ab] focus:outline-none bg-transparent"
 />
         </div>
 
@@ -101,7 +101,7 @@ export default function Login() {
   value={password}
   onChange={(e) => setPassword(e.target.value)}
   required
-  className="w-full px-0 py-2 pr-10 text-[#606060] placeholder-[#b6b9b3] border-b border-[#7f8f93]/50 focus:border-[#0cb4ab] focus:outline-none bg-transparent"
+  className="w-full px-0 py-2 pr-10 text-[#002c3e] placeholder-[#b6b9b3] border-b border-[#b6b9b3] focus:border-[#0cb4ab] focus:outline-none bg-transparent"
 />
 
             <button

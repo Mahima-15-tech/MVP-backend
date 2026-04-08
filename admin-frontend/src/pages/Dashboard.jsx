@@ -13,6 +13,11 @@ ChartJS.register(ArcElement, Tooltip, Legend);
 export default function Dashboard() {
 
   const [data, setData] = useState(null);
+  const [activeSegments, setActiveSegments] = useState({
+    Trial: true,
+    Monthly: true,
+    Yearly: true
+  });
 
   const load = async () => {
     const res = await api.get("/admin/dashboard");
@@ -31,61 +36,84 @@ export default function Dashboard() {
   // ✅ AFTER hooks
   if (!data) return <div>Loading...</div>;
 
+  const scrollToSection = (id) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
 
   /* ---------- DONUT CHART ---------- */
 
+  // 👇 ADD HERE (pieData ke upar)
 
-  const pieData = {
-    labels: ["Trial", "Monthly", "Yearly"],
-    datasets: [
-      {
-        data: [
-          data.freeTrialUsers,
-          data.monthlyUsers,
-          data.yearlyUsers
-        ],
-        backgroundColor: [
-          "#9acd78",
-          "#04bade",
-          "#f6c663"
-        ],
-  
-        borderColor: "#f5f5f5",   // gap color (box color)
-                   // gap thickness
-                       // extra separation
-        hoverOffset: 1
-      }
-    ]
-  };
+const baseColors = {
+  Trial: "#9acd78",
+  Monthly: "#04bade",
+  Yearly: "#f6c663"
+};
+
+const labels = ["Trial", "Monthly", "Yearly"];
+
+const values = [
+  data.freeTrialUsers,
+  data.monthlyUsers,
+  data.yearlyUsers
+];
+
+const backgroundColors = labels.map((label, i) => {
+  const value = values[i];
+
+  if (!activeSegments[label] || value === 0) {
+    return "#e8e8e8"; // grey
+  }
+
+  return baseColors[label];
+});
+
+const pieData = {
+  labels: labels,
+  datasets: [
+    {
+      data: values,
+      backgroundColor: backgroundColors,
+      borderColor: "#f5f5f5",
+      hoverOffset: 5
+    }
+  ]
+};
 
 
-  const pieOptions = {
-    cutout: "54%",
-    layout: {
-      padding: {
-        
-      }
-    },
-    plugins: {
-      legend: {
-        position: "bottom",
-        align: "center",
-        labels: {
-          color: "#5a6c7d",
-          usePointStyle: true,
-          pointStyle: "circle",
-          boxWidth: 16,
-          boxHeight: 16,
-          padding: 16,
-          font: {
-            size: 16,
-            weight: 400
-          }
+const pieOptions = {
+  cutout: "54%",
+  plugins: {
+    legend: {
+      position: "bottom",
+      align: "center",
+      labels: {
+        color: "#5a6c7d",
+        usePointStyle: true,
+        pointStyle: "circle",
+        padding: 16,
+        font: {
+          size: 16
         }
+      },
+
+      // 🔥 ADD THIS
+      onClick: (e, legendItem) => {
+        const label = legendItem.text;
+
+        setActiveSegments(prev => ({
+          ...prev,
+          [label]: !prev[label]
+        }));
       }
-    },
-    maintainAspectRatio: false
-  };
+    }
+  },
+  maintainAspectRatio: false
+};
 
   return (
 
@@ -95,17 +123,32 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-4 gap-6">
 
-        <Card title="Total Users" value={data.totalUsers} />
+      <Card 
+  title="Total Users" 
+  value={data.totalUsers} 
+  onClick={() => console.log("No section yet")} 
+/>
 
-        <Card title="Active Subscriptions" value={data.activeSubscriptions} />
+<Card 
+  title="Active Subscriptions" 
+  value={data.activeSubscriptions} 
+  onClick={() => scrollToSection("subscription-section")} 
+/>
 
-        <Card title="Alerts Sent Today" value={data.alertsToday} />
+<Card 
+  title="Alerts Sent Today" 
+  value={data.alertsToday} 
+  onClick={() => scrollToSection("activity-section")} 
+/>
 
-        <Card
-          title="SMS Failed (24h)"
-          value={data.failedSMS}
-          color="text-[#ee6a59]"
-        />
+<Card
+  title="SMS Failed (24h)"
+  value={data.failedSMS}
+  color="text-[#ee6a59]"
+  onClick={() => scrollToSection("activity-section")}
+/>
+
+        
 
       </div>
 
@@ -115,8 +158,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-3 gap-6 items-stretch">
 
         {/* SUBSCRIPTION DISTRIBUTION */}
-
-        <div className="bg-[#f5f5f5] rounded-[40px] p-8 flex flex-col">
+        <div id="subscription-section" className="bg-[#f5f5f5] rounded-[40px] p-8 flex flex-col">
 
         <h2 className="text-3xl font-semibold text-[#002c3e] leading-8 tracking-wide mb-4">
   Subscription <br /> Distribution
@@ -133,7 +175,7 @@ export default function Dashboard() {
 
         {/* SUBSCRIPTION REVENUE */}
 
-        <div className="bg-[#f5f5f5] rounded-[30px] p-8">
+        <div id="activity-section" className="bg-[#f5f5f5] rounded-[30px] p-8">
 
         <h2 className="text-3xl font-semibold text-[#002c3e] leading-8 mb-6 tracking-wide">
   Subscription <br />
@@ -248,18 +290,21 @@ export default function Dashboard() {
 }
 
 
-function Card({ title, value, color }) {
+function Card({ title, value, color, onClick }) {
   return (
-    <div className="bg-[#f5f5f5] rounded-[25px] p-6 text-left shadow-sm">
-
+    <div
+      onClick={onClick}
+      className="bg-[#f5f5f5] rounded-[25px] p-6 text-left shadow-sm 
+      cursor-pointer transition-all duration-200 
+      hover:scale-[1.03] hover:shadow-md"
+    >
       <p className="text-[16px] text-[#5a6c7d] font-semibold">
         {title}
       </p>
 
-      <p className={`text-[48px] font-semibold mt- text-[#002c3e] ${color}`}>
+      <p className={`text-[48px] font-semibold text-[#002c3e] ${color}`}>
         {value}
       </p>
-
     </div>
   );
 }

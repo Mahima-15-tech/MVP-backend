@@ -58,6 +58,13 @@ setLoading(false);
 }
 };
 
+const scrollToSection = (id) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
 /* ================= SUMMARY ================= */
 
 const uniqueUsers = new Set(alerts.map(a=>a.phone));
@@ -230,91 +237,159 @@ Reset
 
 <div className="grid grid-cols-4 gap-6">
 
-<Card label="Users Triggered" value={usersTriggered} />
-<Card label="SMS Sent" value={smsSent} />
-<Card label="SMS Pending" value={smsPending} />
-<Card label="SMS Failed" value={smsFailed} error />
+<Card 
+  label="Users Triggered" 
+  value={usersTriggered} 
+  onClick={() => scrollToSection("alerts-table")} 
+/>
+
+<Card 
+  label="SMS Sent" 
+  value={smsSent} 
+  onClick={() => scrollToSection("alerts-table")} 
+/>
+
+<Card 
+  label="SMS Pending" 
+  value={smsPending} 
+  onClick={() => scrollToSection("alerts-table")} 
+/>
+
+<Card 
+  label="SMS Failed" 
+  value={smsFailed} 
+  error 
+  onClick={() => scrollToSection("alerts-table")} 
+/>
 
 </div>
 
 {/* ================= TABLE ================= */}
 
-<div className="bg-white rounded-[30px] overflow-hidden shadow-[0_8px_0px_rgba(0,0,0,0.05)]">
+<div id="alerts-table" className="bg-white rounded-[30px] overflow-hidden border border-[#e6e6e6]">
 
-{loading ? (
-<div className="p-10 text-center text-gray-400">Loading alerts...</div>
-) : alerts.length === 0 ? (
-<div className="p-10 text-center text-gray-400">No alerts found</div>
-) : (
+  {loading ? (
 
-<table className="w-full text-[15px]">
+    <div className="p-10 text-center text-gray-400">
+      Loading alerts...
+    </div>
 
-<thead className="bg-[#78bcc4] text-white">
-<tr>
-<th className="px-6 py-5 text-left">User ID</th>
-<th className="px-6 py-5 text-left">User Name</th>
-<th className="px-6 py-5 text-left">Plan</th>
-<th className="px-6 py-5 text-left">Alerts Type</th>
-<th className="px-6 py-5 text-left">Alert Sent At</th>
-<th className="px-6 py-5 text-left">Status</th>
-<th className="px-6 py-5 text-left">Alerts Sent</th>
-<th className="px-6 py-5 text-left">Alert Credits</th>
-</tr>
-</thead>
+  ) : (
 
-<tbody className="text-[#5a6c7d]">
+    <table className="w-full text-[15px]">
 
-{alerts.map((a,i)=>{
+      {/* ✅ HEADER ALWAYS */}
+      <thead className="bg-[#78bcc4] text-white">
+        <tr>
+          <th className="px-6 py-5 text-left">User ID</th>
+          <th className="px-6 py-5 text-left">User Name</th>
+          <th className="px-6 py-5 text-left">Plan</th>
+          <th className="px-6 py-5 text-left">Alerts Type</th>
+          <th className="px-6 py-5 text-left">Alert Sent At</th>
+          <th className="px-6 py-5 text-left">Status</th>
+          <th className="px-6 py-5 text-left">Alerts Sent</th>
+          <th className="px-6 py-5 text-left">Alert Credits</th>
+        </tr>
+      </thead>
 
-const date = new Date(a.createdAt);
+      <tbody className="text-[#5a6c7d]">
 
-const formattedDate =
-date.toLocaleDateString("en-GB") +
-" | " +
-date.toLocaleTimeString("en-US", {
-hour: "numeric",
-minute: "2-digit",
-hour12: true
-});
+        {/* ✅ EMPTY STATE (FIXED LIKE USERS/REVENUE) */}
+        {alerts.length === 0 ? (
 
-return(
-<tr key={i} className="border-b border-[#dcdcdc] hover:bg-[#f7f8f3]">
+          <tr>
+            <td colSpan="8" className="py-20 text-center">
 
-<td className="px-6 py-4 font-medium">{a.phone}</td>
+              <div className="flex flex-col items-center gap-2">
 
-<td className="px-6 py-4 font-semibold">{a.userName}</td>
+                <p className="text-lg font-semibold text-[#5a6c7d]">
+                  No alerts found
+                </p>
 
-<td className="px-6 py-4">
-{a.planType?.charAt(0) + a.planType?.slice(1).toLowerCase()}
-</td>
+                <p className="text-sm text-[#a0a0a0]">
+                  Try adjusting filters or search
+                </p>
 
-<td className="px-6 py-4 font-semibold text-[#ee6a59]">
-{a.alertType === "MISSED_CHECKIN" ? "Missed" : a.alertType}
-</td>
+              </div>
 
-<td className="px-6 py-4">{formattedDate}</td>
+            </td>
+          </tr>
 
-<td className={`px-6 py-4 font-semibold ${
-a.status==="SMS_SENT" ? "text-[#78bcc4]" : "text-[#ee6a59]"
-}`}>
-{a.status==="SMS_SENT"
-? "Sent"
-: a.status==="SMS_PENDING"
-? "Pending"
-: "Failed"}
-</td>
+        ) : (
 
-<td className="px-6 py-4">{a.retryCount}</td>
-<td className="px-6 py-4">{a.currentBalance}</td>
+          alerts.map((a,i)=>{
 
-</tr>
-);
-})}
+            const date = new Date(a.createdAt);
 
-</tbody>
-</table>
+            const formattedDate =
+              date.toLocaleDateString("en-GB") +
+              " | " +
+              date.toLocaleTimeString("en-US", {
+                hour: "numeric",
+                minute: "2-digit",
+                hour12: true
+              });
 
-)}
+            return(
+
+              <tr
+                key={i}
+                className="border-b border-[#e5e5e5] hover:bg-[#f7f8f3] transition"
+              >
+
+                <td className="px-6 py-4 font-medium">
+                  {a.phone}
+                </td>
+
+                <td className="px-6 py-4 font-semibold">
+                  {a.userName}
+                </td>
+
+                <td className="px-6 py-4">
+                  {a.planType?.charAt(0) + a.planType?.slice(1).toLowerCase()}
+                </td>
+
+                <td className="px-6 py-4 font-semibold text-[#ee6a59]">
+                  {a.alertType === "MISSED_CHECKIN" ? "Missed" : a.alertType}
+                </td>
+
+                <td className="px-6 py-4">
+                  {formattedDate}
+                </td>
+
+                <td className={`px-6 py-4 font-semibold ${
+                  a.status==="SMS_SENT"
+                    ? "text-[#78bcc4]"
+                    : "text-[#ee6a59]"
+                }`}>
+                  {a.status==="SMS_SENT"
+                    ? "Sent"
+                    : a.status==="SMS_PENDING"
+                    ? "Pending"
+                    : "Failed"}
+                </td>
+
+                <td className="px-6 py-4">
+                  {a.retryCount}
+                </td>
+
+                <td className="px-6 py-4">
+                  {a.currentBalance}
+                </td>
+
+              </tr>
+
+            )
+
+          })
+
+        )}
+
+      </tbody>
+
+    </table>
+
+  )}
 
 </div>
 
@@ -348,13 +423,21 @@ Next
 
 /* ================= CARD ================= */
 
-function Card({label,value,error}){
-return(
-<div className="bg-[#f5f5f5] rounded-4xl px-8 py-6">
-<p className="text-[#5a6c7d] text-lg font-semibold">{label}</p>
-<p className={`text-[48px] font-semibold mt-2 ${error ? "text-[#ee6a59]" : "text-[#002c3e]"}`}>
-{value}
-</p>
-</div>
-);
-}
+function Card({ label, value, error, onClick }) {
+    return (
+      <div
+        onClick={onClick}
+        className="bg-[#f5f5f5] rounded-4xl px-8 py-6 
+        cursor-pointer transition-all duration-200 
+        hover:scale-[1.03] hover:shadow-md"
+      >
+        <p className="text-[#5a6c7d] text-lg font-semibold">{label}</p>
+  
+        <p className={`text-[48px] font-semibold mt-2 ${
+          error ? "text-[#ee6a59]" : "text-[#002c3e]"
+        }`}>
+          {value}
+        </p>
+      </div>
+    );
+  }

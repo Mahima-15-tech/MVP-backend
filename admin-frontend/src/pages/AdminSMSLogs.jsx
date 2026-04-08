@@ -16,6 +16,7 @@ function InlineDatePicker({ value, onChange, label }) {
   const [showMonth, setShowMonth] = useState(false);
   const [showYear, setShowYear] = useState(false);
 
+
   const ref = useRef();
 
   const years = Array.from({ length: 50 }, (_, i) => 2000 + i);
@@ -229,7 +230,10 @@ const paginatedData = data.slice(
 page*perPage
 );
 
+const [highlightTable, setHighlightTable] = useState(false);
+const [highlightSummary, setHighlightSummary] = useState(false);
 
+const [commission, setCommission] = useState(15);
 
 
 const titleMonth = () => {
@@ -316,6 +320,27 @@ const grossTotal = data.reduce((a,b)=>a+b.gross,0);
 const netTotal = data.reduce((a,b)=>a+b.net,0);
 
 
+const scrollToTable = () => {
+  const el = document.getElementById("revenue-table");
+  if (el) {
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    setHighlightTable(true);
+    setTimeout(() => setHighlightTable(false), 2000);
+  }
+};
+
+const scrollToSummary = () => {
+  const el = document.getElementById("revenue-summary");
+  if (el) {
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    setHighlightSummary(true);
+    setTimeout(() => setHighlightSummary(false), 2000);
+  }
+};
+
+
 /* ================= MONTH OPTIONS ================= */
 
 const months = [
@@ -339,22 +364,37 @@ return(
 <div className="relative">
 
 <button
-onClick={()=>setOpenMonth(!openMonth)}
-className="
-bg-[#002c3e]
-text-white
-px-10
-py-3
-rounded-full
-inline-flex
-items-center
-gap-2
-tracking-wide
-font-semibold
-whitespace-nowrap
-"
+  onClick={() => setOpenMonth(!openMonth)}
+  className="
+  bg-[#002c3e]
+  text-white
+  px-10
+  py-3
+  rounded-full
+  inline-flex
+  items-center
+  gap-2
+  tracking-wide
+  font-semibold
+  whitespace-nowrap
+  "
 >
-{months.find(m=>m.value===month)?.label} ▼
+  {months.find(m => m.value === month)?.label}
+
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    className={`w-6 h-6 transition ${openMonth ? "rotate-180" : ""}`}
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M7 10l5 5 5-5"
+    />
+  </svg>
 </button>
 
 {openMonth && (
@@ -390,10 +430,25 @@ className="px-6 py-2 leading-4 hover:bg-[#6f736f] cursor-pointer"
 <div className="relative">
 
 <button
-onClick={()=>setOpenExport(!openExport)}
-className="bg-[#f5f5f5] rounded-full px-9 py-3 font-semibold text-[#5a6c7d]"
+  onClick={() => setOpenExport(!openExport)}
+  className="bg-[#f5f5f5] rounded-full px-9 py-3 font-semibold text-[#5a6c7d] inline-flex items-center gap-2"
 >
-Export ▼
+  Export
+
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    className={`w-6 h-6 transition ${openExport ? "rotate-180" : ""}`}
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M7 10l5 5 5-5"
+    />
+  </svg>
 </button>
 
 {openExport && (
@@ -477,11 +532,23 @@ Apply
 
 <div className="grid grid-cols-3 gap-6">
 
-<Card label="Total Transactions" value={data.length} />
+<Card 
+  label="Total Transactions" 
+  value={data.length} 
+  onClick={scrollToTable}
+/>
 
-<Card label="Gross Revenue" value={`$${grossTotal.toFixed(2)}`} />
+<Card 
+  label="Gross Revenue" 
+  value={`$${grossTotal.toFixed(2)}`} 
+  onClick={scrollToSummary}
+/>
 
-<Card label="Net Revenue" value={`$${netTotal.toFixed(2)}`} />
+<Card 
+  label="Net Revenue" 
+  value={`$${netTotal.toFixed(2)}`} 
+  onClick={scrollToSummary}
+/>
 
 </div>
 
@@ -491,97 +558,95 @@ Apply
 
 {/* ================= TABLE ================= */}
 
-<div className="bg-white rounded-4xl overflow-hidden">
-
-<table className="w-full text-[16px] tracking-wide">
-    {data.length === 0 && (
-<tr>
-<td colSpan="6" className="text-center py-10 text-gray-400">
-No revenue data found
-</td>
-</tr>
-)}
-
-
-<thead className="bg-[#78bcc4] text-white">
-    
-
-<tr>
-
-
-<th className="px-6 py-5 text-left">Date</th>
-<th className="px-6 py-5 text-left">User ID</th>
-<th className="px-6 py-5 text-left">User Name</th>
-<th className="px-6 py-5 text-left">Plan</th>
-<th className="px-6 py-5 text-left">Gross</th>
-<th className="px-6 py-5 text-left">Net*</th>
-
-</tr>
-
-
-
-</thead>
-
-<tbody className="text-[#5a6c7d]">
-
-{paginatedData.map((r,i)=>(
-
-<tr
-key={i}
-className="border-b border-[#e5e5e5] hover:bg-[#f7f8f3]"
+<div 
+  id="revenue-table"
+  className={`bg-white rounded-4xl overflow-hidden border border-[#e6e6e6] transition-all duration-500 ${
+    highlightTable ? "ring-4 ring-[#78bcc4]" : ""
+  }`}
 >
 
-<td className="px-6 py-4">
+  <table className="w-full text-[16px] tracking-wide">
 
-{new Date(r.date).toLocaleDateString("en-GB",{
-day:"2-digit",
-month:"short",
-year:"numeric"
-})}
+    {/* HEADER (unchanged) */}
+    <thead className="bg-[#78bcc4] text-white">
+      <tr>
+        <th className="px-6 py-5 text-left">Date</th>
+        <th className="px-6 py-5 text-left">User ID</th>
+        <th className="px-6 py-5 text-left">User Name</th>
+        <th className="px-6 py-5 text-left">Plan</th>
+        <th className="px-6 py-5 text-left">Gross</th>
+        <th className="px-6 py-5 text-left">Net*</th>
+      </tr>
+    </thead>
 
-</td>
+    <tbody className="text-[#5a6c7d]">
 
-<td className="px-6 py-4">
+      {/* ✅ EMPTY STATE (ONLY CHANGE) */}
+      {data.length === 0 ? (
 
-{r.userId}
+        <tr>
+          <td colSpan="6" className="py-20 text-center">
 
-</td>
+            <div className="flex flex-col items-center gap-2">
+              <p className="text-lg font-semibold text-[#5a6c7d]">
+                No revenue data found
+              </p>
 
-<td className="px-6 py-4 font-semibold">
+              <p className="text-sm text-[#a0a0a0]">
+                Try adjusting filters or date range
+              </p>
+            </div>
 
-{r.userName}
+          </td>
+        </tr>
 
-</td>
+      ) : (
 
-<td className="px-6 py-4">
+        /* DATA SAME AS YOURS */
+        paginatedData.map((r,i)=>(
 
-{r.plan?.toLowerCase()}
+          <tr
+            key={i}
+            className="border-b border-[#e5e5e5] hover:bg-[#f7f8f3]"
+          >
 
-</td>
+            <td className="px-6 py-4">
+              {new Date(r.date).toLocaleDateString("en-GB",{
+                day:"2-digit",
+                month:"short",
+                year:"numeric"
+              })}
+            </td>
 
-<td className="px-6 py-4 text-[#78bcc4] font-semibold">
+            <td className="px-6 py-4">
+              {r.userId}
+            </td>
 
-${r.gross.toFixed(2)}
+            <td className="px-6 py-4 font-semibold">
+              {r.userName}
+            </td>
 
-</td>
+            <td className="px-6 py-4">
+              {r.plan?.toLowerCase()}
+            </td>
 
-<td className="px-6 py-4 text-[#78bcc4] font-semibold">
+            <td className="px-6 py-4 text-[#78bcc4] font-semibold">
+              ${r.gross.toFixed(2)}
+            </td>
 
-${r.net.toFixed(2)}
+            <td className="px-6 py-4 text-[#78bcc4] font-semibold">
+              ${r.net.toFixed(2)}
+            </td>
 
-</td>
+          </tr>
 
-</tr>
+        ))
 
-))}
+      )}
 
+    </tbody>
 
-
-</tbody>
-
-</table>
-
-
+  </table>
 
 </div>
 
@@ -609,7 +674,12 @@ Next
 
 {/* ================= REVENUE SUMMARY ================= */}
 
-<div className="flex items-center gap-6">
+<div 
+  id="revenue-summary"
+  className={`flex items-center gap-6 transition-all duration-500 ${
+    highlightSummary ? "ring-4 ring-[#78bcc4] rounded-2xl p-3" : ""
+  }`}
+>
 <h2 className="text-3xl font-semibold text-[#002c3e]">
 
 {titleMonth} Revenue
@@ -634,7 +704,33 @@ Net<sup className="raletive -top-1">*</sup><span className="text-[#002c3e] text-
 
 </span>
 
+<div className="flex items-center gap-3 bg-[#f5f5f5] px-5 py-2 rounded-full ml-auto">
+
+    <span className="text-[#5a6c7d] text-sm font-semibold">
+      Commission %
+    </span>
+
+    <input
+      type="number"
+      value={commission}
+      onChange={(e) => setCommission(e.target.value)}
+      className="w-16 bg-transparent outline-none text-[#002c3e] font-semibold"
+    />
+
+    <button
+      onClick={async () => {
+        await api.post("/admin/set-commission", { commission });
+        fetchRevenue();
+      }}
+      className="bg-[#002c3e] text-white px-4 py-1 rounded-full text-sm"
+    >
+      Save
+    </button>
+
+  </div>
+
 </div>
+
 
 
 </div>
@@ -646,26 +742,23 @@ Net<sup className="raletive -top-1">*</sup><span className="text-[#002c3e] text-
 
 /* ================= CARD ================= */
 
-function Card({label,value,error}){
+function Card({ label, value, error, onClick }) {
+  return (
+    <div
+      onClick={onClick}
+      className="bg-[#f5f5f5] rounded-4xl px-8 py-6 
+      cursor-pointer transition-all duration-200 
+      hover:scale-[1.03] hover:shadow-md"
+    >
+      <p className="text-[#5a6c7d] text-lg font-semibold">
+        {label}
+      </p>
 
-return(
-
-<div className="bg-[#f5f5f5] rounded-4xl px-8 py-6">
-
-<p className="text-[#5a6c7d] text-lg font-semibold">
-
-{label}
-
-</p>
-
-<p className={`text-[48px] font-semibold mt-2 ${error ? "text-[#ee6a59]" : "text-[#002c3e]"}`}>
-
-{value}
-
-</p>
-
-</div>
-
-);
-
+      <p className={`text-[48px] font-semibold mt-2 ${
+        error ? "text-[#ee6a59]" : "text-[#002c3e]"
+      }`}>
+        {value}
+      </p>
+    </div>
+  );
 }

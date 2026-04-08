@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../api/axios";
+import EmptyState from "../components/EmptyState";
 
 export default function SmsTracker(){
 
@@ -269,26 +270,15 @@ Loading...
 <tbody className="text-[#5a6c7d]">
 
 {data.length === 0 ? (
-
-<tr>
-  <td colSpan="8" className="text-center py-16">
-
-    <div className="flex flex-col items-center gap-3">
-
-      <p className="text-lg font-semibold text-[#5a6c7d]">
-        No SMS records found
-      </p>
-
-      <p className="text-sm text-[#a0a0a0]">
-        Try adjusting filters or search
-      </p>
-
-    </div>
-
-  </td>
-</tr>
-
-) : data.map((row,i)=>(
+  <tr>
+    <td colSpan="8">
+      <EmptyState
+        title="No SMS records found"
+        subtitle="Try adjusting filters or search"
+      />
+    </td>
+  </tr>
+) :  data.map((row,i)=>(
 
 <tr
 key={i}

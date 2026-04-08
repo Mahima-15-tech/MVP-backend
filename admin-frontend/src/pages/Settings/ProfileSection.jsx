@@ -144,21 +144,26 @@ className=" text-[#002c3e] text-xl font-semibold w-42 bg-transparent"
 
   {/* CAMERA BUTTON */}
   <button
-    onClick={()=>fileRef.current.click()}
-    className="
-    absolute bottom-4 -right-3
-    w-10 h-10
-    flex items-center justify-center
-    rounded-full
-    bg-white
-    border-2 border-[#78bcc4]
-    shadow-md
-    text-[#002c3e]
-    hover:scale-105 transition
-    "
-  >
-    <Camera size={18}/>
-  </button>
+  onClick={()=>fileRef.current.click()}
+  className="
+  absolute bottom-4 -right-3
+  w-10 h-10
+  flex items-center justify-center
+  rounded-full
+  bg-white
+  border-2 border-[#78bcc4]
+  shadow-md
+  hover:scale-105 transition
+  "
+>
+
+  <img
+    src="/camera.svg"
+    alt="camera"
+    className="w-32 h-32   object-contain"
+  />
+
+</button>
 
   <input
     type="file"

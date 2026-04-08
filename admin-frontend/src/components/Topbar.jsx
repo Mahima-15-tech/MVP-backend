@@ -45,13 +45,13 @@ export default function Topbar() {
       </div>
 
       {/* RIGHT SIDE */}
-      <div className="flex items-center gap-6">
+      <div className="flex items-center mr-4">
 
-        <div className="w-12 h-6 bg-[#d1d5db] rounded-full flex items-center px-1">
+        {/* <div className="w-12 h-6 bg-[#d1d5db] rounded-full flex items-center px-1">
           <div className="w-5 h-5 bg-[#f5f5f5] rounded-full flex items-center justify-center">
             <Sun size={12} color="#f5b13e" />
           </div>
-        </div>
+        </div> */}
 
         <div className="w-10 h-10 bg-[#002c3e] text-white rounded-full flex items-center justify-center font-semibold text-lg shadow-sm hover:scale-105 transition-all duration-300">
   A

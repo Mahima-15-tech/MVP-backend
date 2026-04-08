@@ -28,7 +28,7 @@ export default function AdminLayout({ children }) {
   rounded-tl-[90px]
   -mt-3
   ml-4
-  shadow-[inset_0_10px_0px_rgba(198,203,195,0.8)]
+  shadow-[inset_0_10px_0px_rgba(198,203,195,0.5)]
   z-0
   pointer-events-none
 "

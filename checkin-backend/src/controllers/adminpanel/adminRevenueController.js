@@ -1,6 +1,7 @@
 const SubscriptionHistory = require("../../models/SubscriptionHistory");
+const AppSettings = require("../../models/AppSettings");
 
-const COMMISSION = 0.15;
+
 
 const PLAN_PRICE = {
   MONTHLY: 8,
@@ -11,6 +12,9 @@ const PLAN_PRICE = {
 
 exports.getRevenue = async (req,res)=>{
 try{
+
+  const settings = await AppSettings.findOne();
+const COMMISSION = (settings?.commission || 15) / 100;
 
 const {month,from,to} = req.query;
 
@@ -108,7 +112,6 @@ plan:"$newPlan"
 const revenue = records.map(r=>{
 
 const gross = PLAN_PRICE[r.plan] || 0;
-
 const net = +(gross * (1 - COMMISSION)).toFixed(2);
 
 return{
@@ -130,6 +133,8 @@ res.status(500).json({message:err.message});
 
 
 exports.getRevenueData = async () => {
+  const settings = await AppSettings.findOne();
+  const COMMISSION = (settings?.commission || 15) / 100;
 
   const records = await SubscriptionHistory.find();
 

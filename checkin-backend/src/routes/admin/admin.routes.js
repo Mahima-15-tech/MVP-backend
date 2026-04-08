@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 
+const AppSettings = require("../../models/AppSettings");
 const adminAuth = require("../../middleware/admin.middleware");
 const requireSuperAdmin = require("../../middleware/requireSuperAdmin");
 
@@ -234,6 +235,39 @@ router.post(
 //revenue
 
 router.get("/revenue",adminAuth, getRevenue);
+
+// routes/admin.js
+router.post("/set-commission", async (req, res) => {
+  try {
+    const { commission } = req.body;
+
+    let settings = await AppSettings.findOne();
+
+    if (!settings) {
+      settings = new AppSettings({ commission });
+    } else {
+      settings.commission = commission;
+    }
+
+    await settings.save();
+
+    res.json({ message: "Commission updated" });
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.get("/get-commission", async (req, res) => {
+  try {
+    const settings = await AppSettings.findOne();
+    res.json({
+      commission: settings?.commission || 15
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
 
 module.exports = router;

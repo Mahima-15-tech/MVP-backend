@@ -368,3 +368,23 @@ exports.deleteAccount = async (req, res) => {
   }
 };
 
+
+
+
+exports.saveToken = async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    // assume user logged in hai (req.user.id)
+    await User.findByIdAndUpdate(req.userId, {
+      fcmToken: token,
+    });
+
+    res.json({ success: true });
+
+  } catch (err) {
+    res.status(500).json({ error: "Failed" });
+  }
+};
+
+

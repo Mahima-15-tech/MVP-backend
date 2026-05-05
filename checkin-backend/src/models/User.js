@@ -67,6 +67,11 @@ alertVoice: {
   banReason: String,
   bannedAt: Date,
 
+  fcmToken: {
+    type: String,
+    default: null
+  },
+
   deviceToken: {
     type: String,
   },

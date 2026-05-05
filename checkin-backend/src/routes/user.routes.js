@@ -12,7 +12,8 @@ const {
    logoutUser,
    updateSmsConsent,
    saveEmail,
-   saveName
+   saveName,
+   saveToken
    
 } = require("../controllers/user.controller");
 const upload = require("../middleware/uploadProfile");
@@ -45,6 +46,7 @@ router.post("/location", auth, updateLocation);
 router.post("/device-token", auth, saveDeviceToken);
 router.post("/sms-consent", auth, updateSmsConsent);
 router.post("/signout", auth, logoutUser);
+router.post("/save-token",auth, saveToken);
 router.delete("/", auth, deleteAccount);
 
 

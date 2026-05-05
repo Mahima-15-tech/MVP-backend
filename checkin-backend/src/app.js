@@ -11,7 +11,8 @@ const subscriptionRoutes = require("./routes/subscriptionRoutes");
 const webhookRoutes = require("./routes/webhookRoutes");
 const creditRoutes = require("./routes/creditRoutes");
 const supportRoutes = require("./routes/support.routes");
-
+const broadcastRoutes = require("./routes/broadcastRoutes.js");
+const promoRoutes = require("./routes/promoRoutes");
 
 const app = express();
 
@@ -30,6 +31,10 @@ app.use("/api/subscription", subscriptionRoutes);
 app.use("/api/webhook", webhookRoutes);
 app.use("/api/credits", creditRoutes);
 app.use("/api/support", supportRoutes);
+app.use("/api/promo", promoRoutes);
+
+
+app.use("/api/broadcast", broadcastRoutes);
 
 console.log("Support route loaded");
 

@@ -3,6 +3,7 @@ const ContactHistory = require("../models/ContactHistory");
 const Subscription = require("../models/subscription");
 const { formatPhone } = require("../../utils/phoneFormatter");
 const buildSubscriptionResponse = require("../../utils/buildSubscriptionResponse");
+const { sendSMS } = require("../services/smsService");
 
 // ➕ Add contact
 exports.addContact = async (req, res) => {
@@ -85,6 +86,14 @@ exports.addContact = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
+
+  await sendSMS({
+    userId,
+    recipientName: name,
+    recipientNumber: formattedPhone,
+    message: `Hi ${name}, you are added as emergency contact. Reply YES to allow alerts or NO to decline.`,
+    type: "CONSENT"
+  });
 };
 
 

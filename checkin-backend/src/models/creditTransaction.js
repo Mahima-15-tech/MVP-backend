@@ -21,7 +21,8 @@ const creditTransactionSchema = new mongoose.Schema({
       "TOPUP",
       "MISSED_ALERT",
       "SOS",
-      "ADMIN_ADJUSTMENT"
+      "ADMIN_ADJUSTMENT",
+      "PROMO"
     ],
   },
 

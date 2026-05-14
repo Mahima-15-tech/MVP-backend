@@ -6,6 +6,7 @@ const EmergencyContact = require("../models/EmergencyContact");
 const CheckinLog = require("../models/CheckinLog");
 const Subscription = require("../models/subscription");
 const CreditTransaction = require("../models/creditTransaction");
+const { sendSMS } = require("../services/smsService");
 
 const { deductCredit } = require("../services/creditService");
 const { sendPush } = require("../services/pushService");
@@ -159,9 +160,45 @@ cron.schedule("* * * * *", async () => {
 
         // 🔟 fetch contacts (SMS engine will use)
         const contacts = await EmergencyContact.find({
+          userId: user._id,
+          consentStatus: "OPTED_IN"
+        });
 
-          userId: user._id
+        if (contacts.length === 0) {
+          console.log("⚠️ No consented contacts found");
+          continue;
+        }
+        
+        for (const contact of contacts) {
+        
+          try {
+        
+            const locationLink = user.lastKnownLocation
+              ? `https://maps.google.com/?q=${user.lastKnownLocation.lat},${user.lastKnownLocation.lng}`
+              : "Location not available";
+        
+            const message = `🚨 ALERT: ${user.name} missed check-in at ${time}. Location: ${locationLink}`;
+        
+            await sendSMS({
+              userId: user._id,
+              alertId: alert._id,
+              recipientName: contact.name,
+              recipientNumber: contact.phone,
+              message,
+              type: "MISSED_ALERT"
+            });
+        
+            console.log("✅ SMS sent to:", contact.phone);
+        
+          } catch (err) {
+        
+            console.error("❌ SMS failed:", contact.phone, err.message);
+        
+          }
+        }
 
+        await Alert.findByIdAndUpdate(alert._id, {
+          status: "SMS_SENT"
         });
 
         console.log("📞 Contacts ready:", contacts.length);

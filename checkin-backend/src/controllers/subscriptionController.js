@@ -83,62 +83,70 @@ exports.purchasePlan = async (req, res) => {
     const userId = req.user.userId;
     const { planType } = req.body;
 
-    let credits;
+    let credits = 3;
 
-    if (planType === "MONTHLY") {
-      credits = 3;
-    } else if (planType === "YEARLY") {
-      credits = 3; // monthly cycle for yearly
-    } else {
+    if (!["MONTHLY", "YEARLY", "UNLIMITED"].includes(planType)) {
       return res.status(400).json({ message: "Invalid plan" });
     }
 
     const startDate = new Date();
-    const endDate = new Date(startDate);
+    let endDate = new Date(startDate);
 
-    // ✅ set expiry
     if (planType === "MONTHLY") {
       endDate.setMonth(endDate.getMonth() + 1);
-    } else {
+    } else if (planType === "YEARLY") {
       endDate.setFullYear(endDate.getFullYear() + 1);
+    } else if (planType === "UNLIMITED") {
+      endDate = null;
     }
 
     let sub = await Subscription.findOne({ userId });
 
     if (!sub) {
-      return res.status(400).json({ message: "No existing subscription found" });
+      sub = await Subscription.create({
+        userId,
+        planType,
+        startDate,
+        endDate,
+        status: "ACTIVE",
+        creditsPerCycle: credits,
+        nextRenewalDate:
+          planType === "YEARLY" || planType === "UNLIMITED"
+            ? new Date(new Date().setMonth(new Date().getMonth() + 1))
+            : null
+      });
+    } else {
+      await SubscriptionHistory.create({
+        userId,
+        previousPlan: sub.planType,
+        newPlan: planType,
+        changedBy: "USER"
+      });
+
+      sub.planType = planType;
+      sub.startDate = startDate;
+      sub.endDate = endDate;
+      sub.status = "ACTIVE";
+      sub.creditsPerCycle = credits;
+
+      if (planType === "YEARLY" || planType === "UNLIMITED") {
+        const next = new Date();
+        next.setMonth(next.getMonth() + 1);
+        sub.nextRenewalDate = next;
+      } else {
+        sub.nextRenewalDate = null;
+      }
+
+      await sub.save();
     }
 
-    // 🔥 history
-    await SubscriptionHistory.create({
-      userId,
-      previousPlan: sub.planType,
-      newPlan: planType,
-      changedBy: "USER"
+    // ✅ update user
+    await User.findByIdAndUpdate(userId, {
+      subscriptionStatus: "ACTIVE"
     });
 
-    // 🔥 update subscription
-    sub.planType = planType;
-    sub.startDate = startDate;
-    sub.endDate = endDate;
-    sub.creditsPerCycle = credits;
-    sub.status = "ACTIVE";
-
-    // ✅ IMPORTANT LOGIC
-    if (planType === "YEARLY") {
-      const nextRenewal = new Date(startDate);
-      nextRenewal.setMonth(nextRenewal.getMonth() + 1);
-      sub.nextRenewalDate = nextRenewal;
-    } else {
-      sub.nextRenewalDate = null; // ❌ monthly doesn't auto renew
-    }
-
-    await sub.save();
-
-    // ❗ reset old credits (trial/topup)
+    // ✅ reset + add credits
     await resetCredits(userId);
-
-    // ✅ add fresh credits (3)
     await addCredits(userId, credits, "RENEWAL");
 
     const updatedUser = await User.findById(userId);

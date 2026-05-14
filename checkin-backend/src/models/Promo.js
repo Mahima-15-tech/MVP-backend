@@ -1,21 +1,39 @@
 const mongoose = require("mongoose");
 
 const promoSchema = new mongoose.Schema({
-  code: String,
-  duration: String,
-  emails: [String],
-  message: String,
-  expiry: Date,
-  status: {
+  code: { type: String, unique: true },
+
+  duration: {
     type: String,
-    default: "Not Redeemed"
+    enum: ["1 Month", "1 Year", "Unlimited"], // 👈 UI same
+    required: true
   },
-  isRedeemed: { type: Boolean, default: false },
+
+  emails: [String], // 👈 kis-kis ko bhejna hai
+
+  message: String, // 👈 email content
+
+  validityDays: Number, // code expire hone ke liye
+
+  expiresAt: Date,
+
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+
+  isRedeemed: {
+    type: Boolean,
+    default: false
+  },
+
   redeemedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User"
   },
+
   redeemedAt: Date
+
 }, { timestamps: true });
 
 module.exports = mongoose.model("Promo", promoSchema);

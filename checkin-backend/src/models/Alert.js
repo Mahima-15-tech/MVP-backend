@@ -16,6 +16,7 @@ const alertSchema = new mongoose.Schema({
     enum: ["CREATED", "SMS_PENDING", "SMS_SENT", "FAILED"],
     default: "CREATED"
   },
+  expiresAt: Date,
   creditsUsed: Number,
   retryCount: { type: Number, default: 0 },
 nextRetryAt: Date,

@@ -43,6 +43,115 @@ exports.getAlertHistory = async (req, res) => {
   }
 };
 
+exports.initSOS = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    // 🔥 cleanup expired
+    await Alert.deleteMany({
+      userId,
+      status: "CREATED",
+      expiresAt: { $lt: new Date() }
+    });
+
+    // 🔥 only active check
+    const existing = await Alert.findOne({
+      userId,
+      status: "CREATED",
+      type: "SOS",
+      expiresAt: { $gt: new Date() }
+    });
+
+    if (existing) {
+      return res.json({
+        message: "SOS already initiated",
+        alert: existing
+      });
+    }
+
+    const alert = await Alert.create({
+      userId,
+      type: "SOS",
+      status: "CREATED",
+      expiresAt: new Date(Date.now() + 20 * 1000)
+    });
+
+    res.json({
+      message: "SOS initiated",
+      alertId: alert._id,
+      expiresIn: 20
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+exports.confirmSOS = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const alert = await Alert.findOne({
+      userId,
+      type: "SOS",
+      status: "CREATED"
+    }).sort({ createdAt: -1 });
+
+    if (!alert) {
+      return res.status(400).json({
+        message: "No active SOS to confirm"
+      });
+    }
+    
+    
+    if (alert.expiresAt && new Date() > alert.expiresAt) {
+      return res.status(400).json({
+        message: "SOS expired, please try again"
+      });
+    }
+    const user = await User.findById(userId);
+
+    const contacts = await EmergencyContact.find({ userId });
+
+    if (!contacts.length) {
+      return res.status(400).json({
+        message: "No emergency contacts found"
+      });
+    }
+
+    // ✅ FINAL TRIGGER
+    alert.status = "SMS_PENDING";
+    alert.location = user.lastKnownLocation || null;
+    await alert.save();
+
+    // pause checkin
+    await Checkin.updateOne(
+      { userId },
+      { status: "PAUSED" }
+    );
+
+    console.log("🚨 SOS CONFIRMED:", alert._id);
+
+    res.json({
+      message: "SOS alert sent",
+      alert
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.cancelSOS = async (req, res) => {
+  await Alert.deleteOne({
+    userId: req.user.userId,
+    type: "SOS",
+    status: "CREATED"
+  });
+
+  res.json({ message: "SOS cancelled" });
+};
 
 exports.triggerSOS = async (req, res) => {
 

@@ -1,17 +1,44 @@
-async function sendSMS(phone, message) {
-    console.log("📨 Sending SMS to:", phone);
-  
-    // simulate random success/fail
-    const success = Math.random() > 0.5;
-  
-    if (success) {
-      console.log("✅ SMS Sent");
-      return { success: true };
-    } else {
-      console.log("❌ SMS Failed");
-      return { success: false, error: "Network error" };
-    }
+const client = require("../../utils/twilio");
+const SMSLog = require("../models/SMSLog");
+
+exports.sendSMS = async ({
+  userId,
+  alertId = null,
+  recipientName,
+  recipientNumber,
+  message,
+  type
+}) => {
+  try {
+
+    const sms = await client.messages.create({
+      body: message,
+      from: process.env.TWILIO_PHONE,
+      to: recipientNumber
+    });
+
+    await SMSLog.create({
+      userId,
+      alertId,
+      recipientName,
+      recipientNumber,
+      type,
+      status: "SENT",
+      plivoMessageId: sms.sid
+    });
+
+  } catch (error) {
+
+    await SMSLog.create({
+      userId,
+      alertId,
+      recipientName,
+      recipientNumber,
+      type,
+      status: "FAILED",
+      failureReason: error.message
+    });
+
+    throw error;
   }
-  
-  module.exports = { sendSMS };
-  
+};

@@ -32,11 +32,14 @@ app.use("/api/webhook", webhookRoutes);
 app.use("/api/credits", creditRoutes);
 app.use("/api/support", supportRoutes);
 app.use("/api/promo", promoRoutes);
-
+app.use("/api", require("./routes/testEmail"));
 
 app.use("/api/broadcast", broadcastRoutes);
 
-console.log("Support route loaded");
+app.use(express.urlencoded({ extended: false }));
+app.use("/twilio", require("./routes/twilioRoutes"));
+app.use("/test", require("./routes/testRoutes"));
+
 
 
 

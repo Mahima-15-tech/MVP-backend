@@ -23,11 +23,7 @@ const smsLogSchema = new mongoose.Schema({
     required: true
   },
 
-  type: {
-    type: String,
-    enum: ["MISSED_ALERT", "SOS_ALERT", "OTP"],
-    required: true
-  },
+  twilioMessageId: String,
 
   status: {
     type: String,

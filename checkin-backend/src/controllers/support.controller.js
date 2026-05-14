@@ -1,5 +1,6 @@
 const SupportTicket = require("../models/SupportTicket");
 const User = require("../models/User");
+const { sendMail } = require("../../utils/mail");
 
 exports.createTicket = async (req, res) => {
   try {
@@ -17,11 +18,46 @@ exports.createTicket = async (req, res) => {
 
     const ticket = await SupportTicket.create({
       userId: req.user.userId,
-      email: user.email,   // auto fetch
+      email: user.email,   
       subject,
       description,
       attachmentUrl: req.file?.path || null
     });
+
+    try {
+      await sendMail({
+        to: process.env.CLIENT_SUPPORT_EMAIL,
+        subject: `New Support Ticket: ${subject}`,
+        html: `
+          <h3>New Support Request</h3>
+          <p><b>User:</b> ${user.email}</p>
+          <p><b>Subject:</b> ${subject}</p>
+          <p><b>Description:</b> ${description}</p>
+        `,
+        replyTo: user.email   
+      });
+
+      await sendMail({
+        to: user.email,
+        subject: "We've received your request",
+        html: `
+          <p>Hi ${user.name || "User"},</p>
+          <p>Thanks for reaching out to us. Our team will get back to you within 24 hours.</p>
+          <br/>
+          <small>Team SOLO</small>
+        `
+      });
+    
+      console.log("✅ MAIL SENT");
+    
+    } catch (err) {
+      console.log("❌ MAIL ERROR:", err);
+    }
+
+
+     
+
+    
 
     res.json({
       message: "Support request submitted",
@@ -31,6 +67,8 @@ exports.createTicket = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
+
+
 };
 
 // const SupportTicket = require("../../models/SupportTicket");
@@ -83,12 +121,24 @@ exports.replyTicket = async (req, res) => {
     message
   });
 
+  await sendMail({
+    to: ticket.email, 
+    subject: `Reply on your ticket: ${ticket.subject}`,
+    html: `
+      <p>${message}</p>
+      <br/>
+      <small>Support Team</small>
+    `
+  });
+
   ticket.status = "IN_PROGRESS";
 
   await ticket.save();
 
   res.json({ message: "Reply added", ticket });
 };
+
+
 
 exports.getUnreadCount = async (req, res) => {
   const count = await SupportTicket.countDocuments({

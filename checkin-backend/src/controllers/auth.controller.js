@@ -4,7 +4,8 @@ const PhoneRegistry = require("../models/PhoneRegistry");
 const { formatPhone } = require("../../utils/phoneFormatter");
 const getCountryRegion = require("../../utils/countryRegion");
 const buildSubscriptionResponse = require("../../utils/buildSubscriptionResponse");
-
+const Otp = require("../models/Otp");
+const { sendMail } = require("../../utils/mail"); 
 
 exports.sendOtp = async (req, res) => {
 
@@ -59,6 +60,93 @@ exports.sendOtp = async (req, res) => {
   });
 };
 
+
+exports.sendEmailOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    // 🔥 CHECK: email exists in DB or not
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(400).json({
+        message: "Email not registered. Please sign up first."
+      });
+    }
+
+    // 🔥 OPTIONAL: ensure email completed
+    if (!user.emailCompleted) {
+      return res.status(400).json({
+        message: "Email not verified for this user"
+      });
+    }
+
+    // 🔥 delete old OTP
+    await Otp.deleteMany({ email });
+
+    const otp = Math.floor(100000 + Math.random() * 900000);
+
+    await Otp.create({
+      email,
+      otp,
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000)
+    });
+
+    await sendMail({
+      to: email,
+      subject: "Your OTP Code",
+      html: `<h3>Your OTP is ${otp}</h3>`
+    });
+
+    res.json({ message: "OTP sent to email" });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.verifyEmailOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    const record = await Otp.findOne({ email, otp });
+
+    if (!record) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    if (new Date() > record.expiresAt) {
+      return res.status(400).json({ message: "OTP expired" });
+    }
+
+    // 🔥 CHECK user must exist
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(400).json({
+        message: "User not found"
+      });
+    }
+
+    const token = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_SECRET
+    );
+
+    res.json({
+      message: "Login successful",
+      token,
+      user
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
 exports.verifyOtp = async (req, res) => {
 

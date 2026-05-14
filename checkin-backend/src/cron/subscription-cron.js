@@ -1,30 +1,35 @@
 const cron = require("node-cron");
 const Subscription = require("../models/subscription");
 const User = require("../models/User");
-const { resetCredits } = require("../services/creditService");
+const { resetCredits,  addCredits } = require("../services/creditService");
 
 console.log("🟢 Subscription cron loaded");
 
-cron.schedule("0 0 * * *", async () => {
+cron.schedule("* * * * *", async () => {
   console.log("🔁 Checking subscription lifecycle");
 
   try {
     const today = new Date();
+    today.setHours(0,0,0,0);
 
     const subs = await Subscription.find({
       status: "ACTIVE",
-      planType: "YEARLY"
+      planType: { $in: ["YEARLY", "UNLIMITED"] }
     });
 
     for (const sub of subs) {
 
-      // ✅ ONLY YEARLY MONTHLY REFRESH
-      if (sub.nextRenewalDate && today >= sub.nextRenewalDate) {
+      if (!sub.nextRenewalDate) continue;
 
-        console.log("🔄 Yearly monthly refresh for:", sub.userId);
+      const renewalDate = new Date(sub.nextRenewalDate);
+      renewalDate.setHours(0,0,0,0);
 
-        await resetCredits(sub.userId);      // old remove
-        await addCredits(sub.userId, 3, "RENEWAL"); // new 3
+      if (today >= renewalDate) {
+
+        console.log("🔄 Monthly refresh for:", sub.planType, sub.userId);
+
+        await resetCredits(sub.userId);
+        await addCredits(sub.userId, sub.creditsPerCycle, "RENEWAL");
 
         const next = new Date(sub.nextRenewalDate);
         next.setMonth(next.getMonth() + 1);

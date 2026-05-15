@@ -25,29 +25,43 @@ exports.createTicket = async (req, res) => {
     });
 
     try {
+
+      // ✅ 1. MAIL TO SUPPORT TEAM
       await sendMail({
         to: process.env.CLIENT_SUPPORT_EMAIL,
         subject: `New Support Ticket: ${subject}`,
         html: `
-          <h3>New Support Request</h3>
-          <p><b>User:</b> ${user.email}</p>
+          <p>Hi Team,</p>
+    
+          <p><b>User Email:</b> ${user.email}</p>
           <p><b>Subject:</b> ${subject}</p>
-          <p><b>Description:</b> ${description}</p>
+          <p><b>Description:</b></p>
+          <p>${description}</p>
         `,
-        replyTo: user.email   
+        replyTo: user.email
       });
-
+    
+      // ✅ 2. AUTO REPLY TO USER
       await sendMail({
         to: user.email,
         subject: "We've received your request",
         html: `
-          <p>Hi ${user.name || "User"},</p>
-          <p>Thanks for reaching out to us. Our team will get back to you within 24 hours.</p>
+          <p style="font-size:16px;">
+            <strong>Subject:</strong> We've received your request
+          </p>
+      
           <br/>
-          <small>Team SOLO</small>
+      
+          <p>Hi ${user.name || "User"},</p>
+      
+          <p>Thanks for reaching out to us. Our team will get back to you within 24 hours.</p>
+      
+          <br/>
+          <p><strong>Team SOLO</strong></p>
         `
       });
-    
+
+      
       console.log("✅ MAIL SENT");
     
     } catch (err) {
@@ -121,23 +135,71 @@ exports.replyTicket = async (req, res) => {
     message
   });
 
-  await sendMail({
-    to: ticket.email, 
-    subject: `Reply on your ticket: ${ticket.subject}`,
-    html: `
-      <p>${message}</p>
-      <br/>
-      <small>Support Team</small>
-    `
-  });
-
-  ticket.status = "IN_PROGRESS";
-
   await ticket.save();
 
-  res.json({ message: "Reply added", ticket });
-};
+  // 🔥 BUILD FULL CONVERSATION HTML
+  const conversation = ticket.replies
+  .map((r) => {
+    return `
+      <div style="
+        margin-top:10px;
+        padding:12px;
+        border-radius:8px;
+        background:${r.sender === "ADMIN" ? "#e6f0f3" : "#f1f1f1"};
+      ">
+        <p style="margin:0; font-size:13px; color:#888;">
+          ${r.sender === "ADMIN" ? "Support Team" : "You"}
+        </p>
+        <p style="margin:6px 0 0; font-size:15px; color:#333;">
+          ${r.message}
+        </p>
+      </div>
+    `;
+  })
+  .join("");  
 
+  await sendMail({
+    to: ticket.email,
+    subject: `Re: ${ticket.subject}`,
+    html: `
+      <p style="font-size:16px;">
+        <strong>Subject:</strong> ${ticket.subject}
+      </p>
+  
+      <br/>
+  
+      <p>Hi ${ticket.userName || "User"},</p>
+  
+      <!-- 🔥 NEW MESSAGE -->
+      <div style="
+        margin-top:12px;
+        padding:14px;
+        background:#ffffff;
+        border-left:4px solid #0b3c49;
+        font-size:15px;
+      ">
+        ${message}
+      </div>
+  
+      <br/>
+  
+      <!-- 🔥 HISTORY -->
+      ${
+        ticket.replies.length > 1
+          ? `
+          <div style="margin-top:25px;">
+            <p style="font-weight:600; color:#444;">Previous conversation:</p>
+            ${conversation}
+          </div>
+          `
+          : ""
+      }
+  
+      <br/>
+      <p>Take care,<br/><strong>Team SOLO</strong></p>
+    `
+  });
+};
 
 
 exports.getUnreadCount = async (req, res) => {

@@ -5,7 +5,7 @@ const { formatPhone } = require("../../utils/phoneFormatter");
 const getCountryRegion = require("../../utils/countryRegion");
 const buildSubscriptionResponse = require("../../utils/buildSubscriptionResponse");
 const Otp = require("../models/Otp");
-const { sendMail } = require("../../utils/mail"); 
+const sendOtpMail = require("../../utils/otpMail"); 
 
 exports.sendOtp = async (req, res) => {
 
@@ -61,7 +61,7 @@ exports.sendOtp = async (req, res) => {
 };
 
 
-exports.sendEmailOtp = async (req, res) => {
+exports.sendOtpMail = async (req, res) => {
   try {
     const { email } = req.body;
 
@@ -96,10 +96,22 @@ exports.sendEmailOtp = async (req, res) => {
       expiresAt: new Date(Date.now() + 5 * 60 * 1000)
     });
 
-    await sendMail({
+  await sendOtpMail(email, otp, user.name);({
       to: email,
-      subject: "Your OTP Code",
-      html: `<h3>Your OTP is ${otp}</h3>`
+      subject: "Your SOLO verification code",
+      html: `
+        <p>Hi ${user.name || "User"},</p>
+    
+        <p>Your verification code is:</p>
+    
+        <h2>${otp}</h2>
+    
+        <p>This code expires in 10 minutes</p>
+    
+        <p>If you did not request this code, please ignore this message</p>
+    
+        <p><strong>Team SOLO</strong></p>
+      `
     });
 
     res.json({ message: "OTP sent to email" });

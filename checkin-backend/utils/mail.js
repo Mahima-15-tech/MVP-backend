@@ -8,12 +8,75 @@ const transporter = nodemailer.createTransport({
   }
 });
 
+// 🔥 TEMPLATE WRAPPER
+const buildTemplate = (content) => {
+  return `
+  <div style="background:#f2f4f5;padding:20px 0;font-family:Arial,sans-serif;">
+    
+    <table width="600" align="center" cellpadding="0" cellspacing="0" style="background:#ffffff;">
+      
+      <!-- 🔹 TOP BAR -->
+      <tr>
+      <td style="background:#0b3c49; padding:0px 30px;">
+        <table width="100%">
+          <tr>
+
+            <!-- LOGO -->
+            <td style="line-height:0;">
+            <img src="cid:logo@solo"
+                style="height:110px; width:auto; display:block;" />
+            </td>
+
+            <!-- SUPPORT -->
+            <td align="right"
+    style="color:#ffffff; font-size:18px; font-weight:600; padding-top:23px;">
+  Support
+</td>
+
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+
+      <!-- 🔹 CONTENT -->
+      <tr>
+      <td style="background:#f9fafb; padding:36px; color:#5a6c7d;  line-height:1.6; font-size:16px;">
+          ${content}
+        </td>
+      </tr>
+
+      <!-- 🔹 BOTTOM BAR -->
+      <tr>
+      <td style="background:#0b3c49; padding:36px; color:#ccc; font-size:12px;">
+          SOLO © 2026 Social Rebels™ Design<br/>
+          All rights reserved<br/>
+          Use of SOLO is subject to our Terms of Use <br/>
+          and Privacy Policy, available in the SOLO app
+        </td>
+      </tr>
+
+    </table>
+
+  </div>
+  `;
+};
+
 exports.sendMail = async ({ to, subject, html, replyTo }) => {
-    await transporter.sendMail({
-      from: `"Support Team" <${process.env.EMAIL_USER}>`,
-      to,
-      subject,
-      html,
-      replyTo  
-    });
-  };
+  await transporter.sendMail({
+    from: `"Support Team" <${process.env.EMAIL_USER}>`,
+    to,
+    subject,
+    html: buildTemplate(html),
+    replyTo,
+
+    // 🔥 ADD THIS
+    attachments: [
+      {
+        filename: "logo.png",
+        path: "./public/logo3.png", 
+        cid: "logo@solo" 
+      }
+    ]
+  });
+};

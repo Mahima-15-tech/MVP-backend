@@ -69,23 +69,20 @@ exports.sendOtpMail = async (req, res) => {
       return res.status(400).json({ message: "Email is required" });
     }
 
-    // 🔥 CHECK: email exists in DB or not
     const user = await User.findOne({ email });
 
     if (!user) {
       return res.status(400).json({
-        message: "Email not registered. Please sign up first."
+        message: "Email not registered",
       });
     }
 
-    // 🔥 OPTIONAL: ensure email completed
     if (!user.emailCompleted) {
       return res.status(400).json({
-        message: "Email not verified for this user"
+        message: "Email not verified",
       });
     }
 
-    // 🔥 delete old OTP
     await Otp.deleteMany({ email });
 
     const otp = Math.floor(100000 + Math.random() * 900000);
@@ -93,30 +90,18 @@ exports.sendOtpMail = async (req, res) => {
     await Otp.create({
       email,
       otp,
-      expiresAt: new Date(Date.now() + 5 * 60 * 1000)
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000),
     });
 
-  await sendOtpMail(email, otp, user.name);({
-      to: email,
-      subject: "Your SOLO verification code",
-      html: `
-        <p>Hi ${user.name || "User"},</p>
-    
-        <p>Your verification code is:</p>
-    
-        <h2>${otp}</h2>
-    
-        <p>This code expires in 10 minutes</p>
-    
-        <p>If you did not request this code, please ignore this message</p>
-    
-        <p><strong>Team SOLO</strong></p>
-      `
-    });
+    console.log("📨 Sending OTP to:", email);
 
-    res.json({ message: "OTP sent to email" });
+    // ✅ FINAL CALL
+    await sendOtpMail(email, otp, user.name);
+
+    res.json({ message: "OTP sent successfully" });
 
   } catch (error) {
+    console.error("❌ API ERROR:", error);
     res.status(500).json({ message: error.message });
   }
 };

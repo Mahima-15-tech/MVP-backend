@@ -1,31 +1,24 @@
-const nodemailer = require("nodemailer");
-const path = require("path");
+const { Resend } = require("resend");
 
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true, // SSL
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-  connectionTimeout: 10000, // ⏱️ prevent hanging
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
+// 🔥 SAME TEMPLATE (NO CHANGE)
 const buildTemplate = (content) => {
   return `
   <div style="background:#f2f4f5;padding:20px 0;font-family:Arial,sans-serif;">
     
     <table width="600" align="center" cellpadding="0" cellspacing="0" style="background:#ffffff;">
       
+      <!-- TOP BAR -->
       <tr>
         <td style="background:#0b3c49; padding:0px 30px;">
           <table width="100%">
             <tr>
 
+              <!-- 🔥 LOGO (UPDATED) -->
               <td style="line-height:0;">
-                <img src="cid:logo@solo"
-                  style="height:110px; width:auto; display:block;" />
+              <img src="https://your-backend-url.onrender.com/public/logo3.png"
+              style="height:110px; width:auto; display:block;" />
               </td>
 
               <td align="right"
@@ -38,12 +31,14 @@ const buildTemplate = (content) => {
         </td>
       </tr>
 
+      <!-- CONTENT -->
       <tr>
         <td style="background:#f9fafb; padding:36px; color:#5a6c7d; line-height:1.6; font-size:16px;">
           ${content}
         </td>
       </tr>
 
+      <!-- FOOTER -->
       <tr>
         <td style="background:#0b3c49; padding:36px; color:#ccc; font-size:12px;">
           SOLO © 2026 Social Rebels™ Design<br/>
@@ -57,6 +52,7 @@ const buildTemplate = (content) => {
   `;
 };
 
+// 🔥 OTP MAIL FUNCTION
 const sendOtpMail = async (to, otp, name) => {
   try {
     const content = `
@@ -82,22 +78,14 @@ const sendOtpMail = async (to, otp, name) => {
       <p><strong>Team SOLO</strong></p>
     `;
 
-    const info = await transporter.sendMail({
-      from: `"SOLO" <${process.env.EMAIL_USER}>`,
+    const response = await resend.emails.send({
+      from: "SOLO <onboarding@resend.dev>", // default working sender
       to,
       subject: "Your SOLO verification code",
       html: buildTemplate(content),
-
-      attachments: [
-        {
-          filename: "logo.png",
-          path: path.join(__dirname, "../public/logo3.png"), // ✅ FIXED PATH
-          cid: "logo@solo",
-        },
-      ],
     });
 
-    console.log("✅ Mail sent:", info.messageId);
+    console.log("✅ Mail sent:", response);
     return true;
 
   } catch (error) {

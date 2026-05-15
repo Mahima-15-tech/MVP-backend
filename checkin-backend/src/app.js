@@ -34,6 +34,8 @@ app.use("/api/support", supportRoutes);
 app.use("/api/promo", promoRoutes);
 // app.use("/api", require("./routes/testEmail"));
 
+
+
 app.use("/api/broadcast", broadcastRoutes);
 
 app.use(express.urlencoded({ extended: false }));
@@ -41,7 +43,7 @@ app.use("/twilio", require("./routes/twilioRoutes"));
 app.use("/test", require("./routes/testRoutes"));
 
 
-
+app.use("/public", express.static("public"));
 
 app.get("/", (req, res) => {
   res.send("Backend is running");

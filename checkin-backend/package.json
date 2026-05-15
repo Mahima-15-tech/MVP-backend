@@ -29,7 +29,7 @@
     "pdfkit": "^0.17.2",
     "react-icons": "^5.6.0",
     "recharts": "^3.7.0",
-    "resend": "^6.12.2",
+    "resend": "^6.12.3",
     "twilio": "^6.0.0"
   },
   "devDependencies": {

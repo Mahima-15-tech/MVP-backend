@@ -16,7 +16,9 @@ const sendBroadcast = async (req, res) => {
     });
 
     // 2. get all users tokens
-    const users = await User.find({ fcmToken: { $exists: true } });
+    const users = await User.find({
+      fcmToken: { $exists: true, $ne: null }
+    });
 
     const tokens = users
     .map(u => u.fcmToken?.trim())
@@ -26,7 +28,7 @@ const sendBroadcast = async (req, res) => {
     // 3. send notification
 if (tokens.length > 0) {
 
-  console.log("🔥 TOKENS:", tokens);  // 👈 ADD
+  console.log("🔥 TOKENS:", tokens);  
 
   const response = await admin.messaging().sendEachForMulticast({
     tokens,

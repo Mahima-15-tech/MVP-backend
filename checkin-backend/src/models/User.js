@@ -46,6 +46,7 @@ alertVoice: {
   country:{
     type:String
    },
+   stripeCustomerId: String,
    
    region:{
     type:String,

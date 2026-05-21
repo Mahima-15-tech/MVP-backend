@@ -1,4 +1,5 @@
 const nodemailer = require("nodemailer");
+const path = require("path");
 
 const transporter = nodemailer.createTransport({
   service: "gmail",
@@ -18,23 +19,32 @@ const buildTemplate = (content) => {
       <!-- 🔹 TOP BAR -->
       <tr>
       <td style="background:#0b3c49; padding:0px 30px;">
-        <table width="100%">
-          <tr>
-
-            <!-- LOGO -->
-            <td style="line-height:0;">
-            <img src="cid:logo@solo"
-                style="height:110px; width:auto; display:block;" />
-            </td>
-
-            <!-- SUPPORT -->
-            <td align="right"
-    style="color:#ffffff; font-size:18px; font-weight:600; padding-top:23px;">
-  Support
-</td>
-
-          </tr>
-        </table>
+      <table width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+    
+        <!-- LOGO -->
+        <td style="line-height:0;">
+          <img src="cid:logo@solo"
+            style="height:110px; display:block;" />
+        </td>
+    
+        <!-- SPACER (IMPORTANT) -->
+        <td width="100%"></td>
+    
+        <!-- SUPPORT -->
+        <td align="right"
+          style="
+            color:#ffffff;
+            font-size:20px;
+            font-weight:700;
+            white-space:nowrap;
+            padding-top: 20px;
+          ">
+          Support
+        </td>
+    
+      </tr>
+    </table>
       </td>
     </tr>
 
@@ -62,7 +72,7 @@ const buildTemplate = (content) => {
   `;
 };
 
-exports.sendMail = async ({ to, subject, html, replyTo }) => {
+exports.sendMail = async ({ to, subject, html, replyTo, file }) => {
   await transporter.sendMail({
     from: `"Support Team" <${process.env.EMAIL_USER}>`,
     to,
@@ -70,13 +80,19 @@ exports.sendMail = async ({ to, subject, html, replyTo }) => {
     html: buildTemplate(html),
     replyTo,
 
-    // 🔥 ADD THIS
+   
+
     attachments: [
       {
         filename: "logo.png",
-        path: "./public/logo3.png", 
-        cid: "logo@solo" 
-      }
+        path: "./public/logo3.png",
+        cid: "logo@solo"
+      },
+    
+      ...(file ? [{
+        filename: file.originalname,
+        path: path.join(__dirname, "..", file.path)
+      }] : [])
     ]
   });
 };

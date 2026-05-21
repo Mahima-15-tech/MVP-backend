@@ -19,6 +19,10 @@ const subscriptionSchema = new mongoose.Schema({
     default: "ACTIVE",
   },
 
+  stripeCustomerId: String,
+stripeSubscriptionId: String,
+stripePriceId: String,
+
   startDate: Date,
   endDate: Date,
   nextRenewalDate: Date,

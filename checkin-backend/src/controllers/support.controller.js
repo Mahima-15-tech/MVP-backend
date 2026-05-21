@@ -38,7 +38,8 @@ exports.createTicket = async (req, res) => {
           <p><b>Description:</b></p>
           <p>${description}</p>
         `,
-        replyTo: user.email
+        replyTo: user.email,
+        file: req.file
       });
     
       // ✅ 2. AUTO REPLY TO USER
@@ -198,7 +199,7 @@ exports.replyTicket = async (req, res) => {
       <br/>
       <p>Take care,<br/><strong>Team SOLO</strong></p>
     `
-  });
+  }); 
 };
 
 

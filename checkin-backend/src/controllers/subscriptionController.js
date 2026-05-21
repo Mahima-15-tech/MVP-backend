@@ -77,6 +77,40 @@ exports.startFreeTrial = async (req, res) => {
   }
 };
 
+exports.createSubscriptionSession = async (req, res) => {
+  const { priceId } = req.body;
+  const user = await User.findById(req.user.userId);
+
+  const session = await stripe.checkout.sessions.create({
+    mode: "subscription",
+    customer: user.stripeCustomerId,
+    line_items: [
+      {
+        price: priceId,
+        quantity: 1,
+      },
+    ],
+    success_url: "https://yourapp.com/success",
+    cancel_url: "https://yourapp.com/cancel",
+  });
+
+  res.json({ url: session.url });
+};
+
+exports.createTopupSession = async (req, res) => {
+  const { priceId } = req.body;
+  const user = await User.findById(req.user.userId);
+
+  const session = await stripe.checkout.sessions.create({
+    mode: "payment",
+    customer: user.stripeCustomerId,
+    line_items: [{ price: priceId, quantity: 1 }],
+    success_url: "https://yourapp.com/success",
+    cancel_url: "https://yourapp.com/cancel",
+  });
+
+  res.json({ url: session.url });
+};
 
 exports.purchasePlan = async (req, res) => {
   try {

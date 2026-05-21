@@ -4,6 +4,7 @@ const Subscription = require("../models/subscription");
 const { formatPhone } = require("../../utils/phoneFormatter");
 const buildSubscriptionResponse = require("../../utils/buildSubscriptionResponse");
 const { sendSMS } = require("../services/smsService");
+const User = require("../models/User");
 
 // ➕ Add contact
 exports.addContact = async (req, res) => {
@@ -12,7 +13,6 @@ exports.addContact = async (req, res) => {
     const { name, phone, countryCode } = req.body;
     const userId = req.user.userId;
 
-    // 🔹 Format phone to E.164 (+65...)
     const formattedPhone = formatPhone(countryCode, phone);
 
     if (!formattedPhone) {
@@ -21,7 +21,6 @@ exports.addContact = async (req, res) => {
       });
     }
 
-    // 🔹 Get Subscription
     const sub = await Subscription.findOne({ userId });
 
     if (!sub || sub.status !== "ACTIVE") {
@@ -30,14 +29,12 @@ exports.addContact = async (req, res) => {
       });
     }
 
-    // 🔹 Determine Limit
     let maxContacts = 1;
 
     if (sub.planType === "MONTHLY" || sub.planType === "YEARLY") {
       maxContacts = 2;
     }
 
-    // Count only active contacts
     const existingCount = await EmergencyContact.countDocuments({ userId });
 
     if (existingCount >= maxContacts) {
@@ -46,7 +43,6 @@ exports.addContact = async (req, res) => {
       });
     }
 
-    // 🔹 Prevent duplicate number
     const duplicate = await EmergencyContact.findOne({
       userId,
       phone: formattedPhone
@@ -62,10 +58,9 @@ exports.addContact = async (req, res) => {
       userId,
       name,
       phone: formattedPhone,
-      
+      consentStatus: "PENDING"
     });
 
-    // 🔥 History Entry
     await ContactHistory.create({
       userId,
       name,
@@ -75,8 +70,26 @@ exports.addContact = async (req, res) => {
 
     const user = await User.findById(userId);
     const subscription = await buildSubscriptionResponse(user);
-    
-    res.json({
+
+    const message = `SOLO SMS Consent
+
+${user.name} added you as an emergency contact in the SOLO safety app.
+
+If they miss a check-in or trigger an SOS, you may receive alerts with their location.
+
+Do you consent to receive these alerts?
+Reply YES to confirm or NO to decline.`;
+
+    // ✅ SEND SMS HERE (INSIDE TRY)
+    await sendSMS({
+      userId,
+      recipientName: name,
+      recipientNumber: formattedPhone,
+      message,
+      type: "CONSENT"
+    });
+
+    return res.json({
       status: 1,
       message: "Emergency contact added",
       contact,
@@ -84,16 +97,8 @@ exports.addContact = async (req, res) => {
     });
 
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
-
-  await sendSMS({
-    userId,
-    recipientName: name,
-    recipientNumber: formattedPhone,
-    message: `Hi ${name}, you are added as emergency contact. Reply YES to allow alerts or NO to decline.`,
-    type: "CONSENT"
-  });
 };
 
 

@@ -1,8 +1,9 @@
 const PushLog = require("../models/PushLog");
+const User = require("../models/User");
+const admin = require("../config/firebase");
 
 async function sendPush(userId, title, body, type) {
 
-  // 1️⃣ Create log
   const pushLog = await PushLog.create({
     userId,
     title,
@@ -13,15 +14,21 @@ async function sendPush(userId, title, body, type) {
 
   try {
 
-    console.log("📲 Sending push to user:", userId);
+    const user = await User.findById(userId);
 
-    // 🔥 Yaha future me FCM integration hoga
-    // For now simulate success
-    const success = true;
-
-    if (!success) {
-      throw new Error("FCM error");
+    if (!user || !user.fcmToken) {
+      throw new Error("No FCM token found");
     }
+
+    console.log("📲 Sending push to:", user.fcmToken);
+
+    await admin.messaging().send({
+      token: user.fcmToken,
+      notification: {
+        title,
+        body,
+      },
+    });
 
     pushLog.status = "SENT";
     pushLog.sentAt = new Date();
@@ -37,9 +44,6 @@ async function sendPush(userId, title, body, type) {
 
     console.log("❌ Push failed:", error.message);
   }
-
 }
 
-module.exports = {
-  sendPush
-};
+module.exports = { sendPush };

@@ -58,8 +58,7 @@ cron.schedule("* * * * *", async () => {
         const [hh, mm] = time.split(":");
 
         const scheduled = new Date();
-
-        scheduled.setHours(parseInt(hh), parseInt(mm), 0, 0);
+        scheduled.setHours(hh, mm, 0, 0);
 
         const graceEnd = new Date(
           scheduled.getTime() + checkin.graceMinutes * 60000
@@ -173,11 +172,23 @@ cron.schedule("* * * * *", async () => {
         
           try {
         
-            const locationLink = user.lastKnownLocation
-              ? `https://maps.google.com/?q=${user.lastKnownLocation.lat},${user.lastKnownLocation.lng}`
-              : "Location not available";
-        
-            const message = `🚨 ALERT: ${user.name} missed check-in at ${time}. Location: ${locationLink}`;
+            let pronoun = "they";
+let possessive = "their";
+
+if (user.gender === "MALE") {
+  pronoun = "he";
+  possessive = "his";
+}
+if (user.gender === "FEMALE") {
+  pronoun = "she";
+  possessive = "her";
+}
+
+const locationLink = user.lastKnownLocation
+  ? `https://maps.google.com/?q=${user.lastKnownLocation.lat},${user.lastKnownLocation.lng}`
+  : "Location not available";
+
+  const message = `🚨 ${user.name} missed check-in. Location: ${locationLink}`;
         
             await sendSMS({
               userId: user._id,

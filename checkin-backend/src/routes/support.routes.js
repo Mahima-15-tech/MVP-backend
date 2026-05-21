@@ -6,7 +6,7 @@ const upload = require("../middleware/upload");
 
 router.post("/", auth, upload.single("file"), createTicket);
 
-router.post("/", auth, createTicket);
+// router.post("/", auth, createTicket);
 router.get("/", getAllTickets);
 router.put("/:id", updateTicket);
 router.post("/:id/reply", replyTicket);

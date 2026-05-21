@@ -6,6 +6,7 @@ const getCountryRegion = require("../../utils/countryRegion");
 const buildSubscriptionResponse = require("../../utils/buildSubscriptionResponse");
 const Otp = require("../models/Otp");
 const sendOtpMail = require("../../utils/otpMail"); 
+const stripe = require("../config/stripe");
 
 exports.sendOtp = async (req, res) => {
 
@@ -177,6 +178,18 @@ exports.verifyOtp = async (req, res) => {
     { new: true }
   );
 
+  // 🔥 STRIPE CUSTOMER CREATE
+let stripeCustomerId = user.stripeCustomerId;
+
+if (!stripeCustomerId) {
+  const customer = await stripe.customers.create({
+    phone: user.phone,
+  });
+
+  user.stripeCustomerId = customer.id;
+  await user.save();
+} 
+
   if (!user) {
     return res.status(404).json({
       message: "User not found"
@@ -199,6 +212,8 @@ exports.verifyOtp = async (req, res) => {
 
   const isProfileComplete =
   user.emailCompleted && user.nameCompleted;
+
+  
 
 res.json({
   status: isProfileComplete ? 2 : 1,

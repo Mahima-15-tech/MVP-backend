@@ -10,7 +10,7 @@ const PLAN_PRICE = {
   TRIAL: 0
 };
 
-const Transaction = require("../../models/transaction");
+const Transaction = require("../../models/Transaction");
 
 exports.getRevenue = async (req, res) => {
   try {

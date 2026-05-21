@@ -292,8 +292,8 @@ exports.saveDeviceToken = async (req, res) => {
       return res.status(400).json({ message: "Device token required" });
     }
 
-    await User.findByIdAndUpdate(userId, {
-      deviceToken
+    await User.findByIdAndUpdate(req.user.userId, {
+      fcmToken: token,
     });
 
     res.json({ message: "Device token saved" });
@@ -375,14 +375,21 @@ exports.saveToken = async (req, res) => {
   try {
     const { token } = req.body;
 
-    // assume user logged in hai (req.user.id)
-    await User.findByIdAndUpdate(req.userId, {
-      fcmToken: token,
-    });
+    console.log("TOKEN:", token);
+    console.log("USER FROM REQ:", req.user);
 
-    res.json({ success: true });
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user.userId,
+      { fcmToken: token },
+      { new: true }   // 👈 IMPORTANT
+    );
+
+    console.log("UPDATED USER:", updatedUser);
+
+    res.json({ success: true, updatedUser });
 
   } catch (err) {
+    console.log("ERROR:", err);
     res.status(500).json({ error: "Failed" });
   }
 };

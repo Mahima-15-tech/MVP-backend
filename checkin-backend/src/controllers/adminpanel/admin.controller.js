@@ -803,3 +803,96 @@ exports.unbanUser = async (req, res) => {
 
   res.json({ message: "User unbanned successfully" });
 };
+
+
+exports.refundSubscription = async (req, res) => {
+  try {
+    const { userId } = req.body;
+
+    const user = await User.findById(userId);
+    const sub = await Subscription.findOne({ userId });
+
+    if (!user || !sub) {
+      return res.status(404).json({ message: "User or subscription not found" });
+    }
+
+    // ✅ STEP 1: get latest invoice
+    const invoices = await stripe.invoices.list({
+      customer: user.stripeCustomerId,
+      limit: 1,
+    });
+
+    const invoice = invoices.data[0];
+
+    if (!invoice || !invoice.charge) {
+      return res.status(400).json({ message: "No charge found to refund" });
+    }
+
+    // ✅ STEP 2: calculate refund amount
+    const now = new Date();
+    const end = new Date(sub.currentPeriodEnd);
+
+    const totalDays = (end - new Date(sub.currentPeriodStart)) / (1000 * 60 * 60 * 24);
+    const remainingDays = (end - now) / (1000 * 60 * 60 * 24);
+
+    const ratio = Math.max(remainingDays / totalDays, 0);
+
+    const refundAmount = Math.floor(invoice.amount_paid * ratio);
+
+    // ✅ STEP 3: create refund
+    await stripe.refunds.create({
+      charge: invoice.charge,
+      amount: refundAmount,
+    });
+
+    // ✅ STEP 4: cancel subscription immediately
+    await stripe.subscriptions.del(sub.stripeSubscriptionId);
+
+    // ✅ STEP 5: update DB
+    sub.status = "CANCELLED";
+    sub.autoRenew = false;
+    await sub.save();
+
+    await User.findByIdAndUpdate(userId, {
+      subscriptionStatus: "CANCELLED"
+    });
+
+    res.json({
+      message: "Refund processed successfully",
+      refundAmount
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.refundTopup = async (req, res) => {
+  try {
+    const { userId, totalCredits, usedCredits, chargeId } = req.body;
+
+    const unusedCredits = totalCredits - usedCredits;
+
+    if (unusedCredits <= 0) {
+      return res.status(400).json({ message: "No credits to refund" });
+    }
+
+    const refundRatio = unusedCredits / totalCredits;
+
+    // assume ₹1 = 1 credit (adjust if needed)
+    const refundAmount = Math.floor(refundRatio * 100 * totalCredits);
+
+    await stripe.refunds.create({
+      charge: chargeId,
+      amount: refundAmount,
+    });
+
+    res.json({
+      message: "Top-up refund successful",
+      refundAmount
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

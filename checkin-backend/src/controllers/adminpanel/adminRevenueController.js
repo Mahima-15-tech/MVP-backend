@@ -10,125 +10,45 @@ const PLAN_PRICE = {
   TRIAL: 0
 };
 
-exports.getRevenue = async (req,res)=>{
-try{
+const Transaction = require("../../models/transaction");
 
-  const settings = await AppSettings.findOne();
-const COMMISSION = (settings?.commission || 15) / 100;
+exports.getRevenue = async (req, res) => {
+  try {
 
-const {month,from,to} = req.query;
+    const { month, from, to } = req.query;
 
-let startDate;
-let endDate;
+    let filter = {};
 
-const now = new Date();
-
-/* ================= MONTH FILTER ================= */
-
-if(month==="THIS_MONTH"){
-startDate = new Date(now.getFullYear(),now.getMonth(),1);
-}
-
-if(month==="LAST_MONTH"){
-startDate = new Date(now.getFullYear(),now.getMonth()-1,1);
-endDate = new Date(now.getFullYear(),now.getMonth(),0);
-}
-
-if(month==="LAST_3"){
-startDate = new Date(now.getFullYear(),now.getMonth()-3,1);
-}
-
-if(month==="YTD"){
-startDate = new Date(now.getFullYear(),0,1);
-}
-
-if(month==="ALL"){
-startDate = null;
-endDate = null;
-}
-
-/* ================= DATE RANGE ================= */
-
-// ADD THIS
-if(month === "CUSTOM"){
-  startDate = null;
-  endDate = null;
-  }
-
-  if(from && to){
-    startDate = new Date(from);
-    
-    endDate = new Date(to);
-    endDate.setHours(23,59,59,999); // 🔥 IMPORTANT FIX
+    // DATE FILTER
+    if (from && to) {
+      filter.createdAt = {
+        $gte: new Date(from),
+        $lte: new Date(new Date(to).setHours(23,59,59,999))
+      };
     }
 
-/* ================= MATCH ================= */
+    const transactions = await Transaction.find(filter)
+      .populate("userId")
+      .sort({ createdAt: -1 });
 
-const match = {};
+    const data = transactions.map(t => ({
+      date: t.createdAt,
+      userId: t.userId?.phone || "-",
+      userName: t.userId?.name || "-",
+      plan: t.type,
+      gross: t.amount,
+      net: t.net,
+      fee: t.fee,
+      status: t.status,
+      paymentIntentId: t.stripePaymentIntentId
+    }));
 
-if(startDate){
-match.createdAt = {$gte:startDate};
-}
+    res.json(data);
 
-if(endDate){
-match.createdAt = {
-...match.createdAt,
-$lte:endDate
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
-}
-
-/* ================= AGGREGATE ================= */
-
-const records = await SubscriptionHistory.aggregate([
-
-{$match:match},
-
-{
-$lookup:{
-from:"users",
-localField:"userId",
-foreignField:"_id",
-as:"user"
-}
-},
-
-{$unwind:"$user"},
-
-{
-$project:{
-date:"$createdAt",
-userId:"$user.phone",
-userName:"$user.name",
-plan:"$newPlan"
-}
-},
-
-{$sort:{date:-1}}
-
-]);
-
-/* ================= REVENUE CALC ================= */
-
-const revenue = records.map(r=>{
-
-const gross = PLAN_PRICE[r.plan] || 0;
-const net = +(gross * (1 - COMMISSION)).toFixed(2);
-
-return{
-...r,
-gross,
-net
-};
-
-});
-
-res.json(revenue);
-
-}catch(err){
-res.status(500).json({message:err.message});
-}
-};
-
 
 
 

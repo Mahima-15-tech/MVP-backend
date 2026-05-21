@@ -1,5 +1,5 @@
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
-const Transaction = require("../models/transaction");
+const Transaction = require("../models/Transaction");
 
 const User = require("../models/User");
 const Subscription = require("../models/subscription");

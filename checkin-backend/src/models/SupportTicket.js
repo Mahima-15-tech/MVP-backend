@@ -39,6 +39,28 @@ const supportTicketSchema = new mongoose.Schema({
     default: "MEDIUM"
   },
 
+  isRefundRequest: {
+    type: Boolean,
+    default: false
+  },
+  
+  refundReason: {
+    type: String,
+    enum: [
+      "Accidental purchase",
+      "SMS blocked in my country",
+      "I changed my mind"
+    ],
+    default: null
+  },
+  // isRefundRequest,
+// refundReason,
+
+  transactionId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Transaction"
+  },
+
   unreadByAdmin: {
     type: Boolean,
     default: true

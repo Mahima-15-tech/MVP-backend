@@ -4,6 +4,7 @@ const router = express.Router();
 const AppSettings = require("../../models/AppSettings");
 const adminAuth = require("../../middleware/admin.middleware");
 const requireSuperAdmin = require("../../middleware/requireSuperAdmin");
+const { refundPayment } = require("../../controllers/stripeController");
 
 /* ================= CONTROLLERS ================= */
 
@@ -70,7 +71,7 @@ const {
 } = require("../../controllers/adminpanel/adminTest.controller");
 
 
-const { getRevenue } = require("../../controllers/adminpanel/adminRevenueController");
+const { getRevenue,getRefundHistory } = require("../../controllers/adminpanel/adminRevenueController");
 
 /* ================= AUTH ================= */
 
@@ -151,6 +152,8 @@ router.post(
   adminAuth,
   addAdminNote
 );
+
+router.post("/refund", refundPayment);
 
 /* ================= ALERTS ================= */
 
@@ -235,6 +238,8 @@ router.post(
 //revenue
 
 router.get("/revenue",adminAuth, getRevenue);
+
+router.get("/refund-history", getRefundHistory);
 
 // routes/admin.js
 router.post("/set-commission", async (req, res) => {

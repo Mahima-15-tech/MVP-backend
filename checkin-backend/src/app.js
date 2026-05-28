@@ -14,15 +14,22 @@ const supportRoutes = require("./routes/support.routes");
 const broadcastRoutes = require("./routes/broadcastRoutes.js");
 const promoRoutes = require("./routes/promoRoutes");
 const stripeRoutes = require("./routes/stripe");
+const { stripeWebhook } = require("./controllers/stripeWebhook");
 
 const app = express();
 
 app.use(cors());
 
-app.use("/webhook/stripe", express.raw({ type: "application/json" }));
 
 
-app.use("/webhook", webhookRoutes);
+app.post(
+  "/webhook/stripe",
+  express.raw({ type: "application/json" }),
+  stripeWebhook
+);
+
+
+
 
 
 app.use(express.json());

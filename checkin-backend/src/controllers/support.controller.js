@@ -1,11 +1,12 @@
 const SupportTicket = require("../models/SupportTicket");
 const User = require("../models/User");
 const { sendMail } = require("../../utils/mail");
+const Transaction = require("../models/Transaction");
 
 exports.createTicket = async (req, res) => {
   try {
 
-    const { subject, description } = req.body;
+    const { subject, description, isRefundRequest, refundReason, transactionId } = req.body;
 
     if (!subject || !description) {
       return res.status(400).json({
@@ -18,11 +19,32 @@ exports.createTicket = async (req, res) => {
 
     const ticket = await SupportTicket.create({
       userId: req.user.userId,
-      email: user.email,   
+      email: user.email,
       subject,
       description,
-      attachmentUrl: req.file?.path || null
+      attachmentUrl: req.file?.path || null,
+    
+      isRefundRequest: isRefundRequest || false,
+      refundReason: refundReason || null,
+      transactionId: transactionId || null
     });
+
+    // 🔥 REFUND LINK LOGIC
+    if (isRefundRequest) {
+
+      const txn = await Transaction.findOne({
+        userId: req.user.userId,
+        status: "SUCCESS"
+      }).sort({ createdAt: -1 });
+    
+      if (txn) {
+        txn.refundRequestedReason = refundReason;
+        txn.refundStatus = "PENDING";
+        txn.refundInitiatedAt = new Date();
+    
+        await txn.save();
+      }
+    }
 
     try {
 

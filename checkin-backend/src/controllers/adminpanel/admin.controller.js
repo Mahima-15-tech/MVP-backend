@@ -846,7 +846,7 @@ exports.refundSubscription = async (req, res) => {
     });
 
     // ✅ STEP 4: cancel subscription immediately
-    await stripe.subscriptions.del(sub.stripeSubscriptionId);
+    await stripe.subscriptions.cancel(sub.stripeSubscriptionId);
 
     // ✅ STEP 5: update DB
     sub.status = "CANCELLED";

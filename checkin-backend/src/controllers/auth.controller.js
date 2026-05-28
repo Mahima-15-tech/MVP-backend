@@ -177,23 +177,22 @@ exports.verifyOtp = async (req, res) => {
     { isVerified: true },
     { new: true }
   );
-
-  // 🔥 STRIPE CUSTOMER CREATE
-let stripeCustomerId = user.stripeCustomerId;
-
-if (!stripeCustomerId) {
-  const customer = await stripe.customers.create({
-    phone: user.phone,
-  });
-
-  user.stripeCustomerId = customer.id;
-  await user.save();
-} 
-
+  
   if (!user) {
     return res.status(404).json({
       message: "User not found"
     });
+  }
+  
+  // 🔥 STRIPE CUSTOMER CREATE
+  if (!user.stripeCustomerId) {
+    const customer = await stripe.customers.create({
+      phone: user.phone,
+      email: user.email || undefined
+    });
+  
+    user.stripeCustomerId = customer.id;
+    await user.save();
   }
 
   if (user.isBanned) {

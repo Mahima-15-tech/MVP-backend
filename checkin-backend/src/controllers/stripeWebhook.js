@@ -7,6 +7,7 @@ const { addCredits, resetCredits } = require("../services/creditService");
 
 exports.stripeWebhook = async (req, res) => {
   console.log("🔥 WEBHOOK HIT");
+  
 
   const sig = req.headers["stripe-signature"];
 
@@ -23,6 +24,8 @@ exports.stripeWebhook = async (req, res) => {
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
+  // res.json({ received: true });
+
   try {
 
     // =====================================
@@ -38,6 +41,12 @@ exports.stripeWebhook = async (req, res) => {
       // 🔹 SUBSCRIPTION FLOW
       // =====================================
       if (session.mode === "subscription") {
+
+        // =====================================
+// 💰 SAVE TRANSACTION HERE (FINAL FIX)
+// =====================================
+
+
     
         // ✅ STEP 2: subscription id lo
         const subscriptionId = session.subscription;
@@ -46,18 +55,47 @@ exports.stripeWebhook = async (req, res) => {
         const stripeSub = await stripe.subscriptions.retrieve(subscriptionId);
     
         // ✅ STEP 4: dates convert karo
-        const start = new Date(stripeSub.current_period_start * 1000);
-        const end = new Date(stripeSub.current_period_end * 1000);
-    
-        // ✅ STEP 5: price id nikalo
-        const priceId = stripeSub.items.data[0].price.id;
-    
-        // ✅ STEP 6: plan detect karo
-        const planType =
-          priceId === process.env.STRIPE_PRICE_YEARLY
-            ? "YEARLY"
-            : "MONTHLY";
-    
+       // ✅ STEP 5: price id nikalo
+const priceId = stripeSub.items.data[0].price.id;
+
+// ✅ STEP 6: plan detect karo
+const planType =
+  priceId === process.env.STRIPE_PRICE_YEARLY
+    ? "YEARLY"
+    : "MONTHLY";
+
+// ✅ STEP 7: dates convert karo
+let start = null;
+let end = null;
+
+// ✅ SAFE extraction
+if (stripeSub.current_period_start) {
+  start = new Date(stripeSub.current_period_start * 1000);
+}
+
+if (stripeSub.current_period_end) {
+  end = new Date(stripeSub.current_period_end * 1000);
+}
+
+// 🔥 FALLBACK (IMPORTANT)
+if (!start || !end) {
+
+  console.log("⚠️ USING FALLBACK FROM CREATED");
+
+  const created = stripeSub.created
+    ? new Date(stripeSub.created * 1000)
+    : new Date();
+
+  start = created;
+
+  if (planType === "YEARLY") {
+    end = new Date(created);
+    end.setFullYear(end.getFullYear() + 1);
+  } else {
+    end = new Date(created);
+    end.setMonth(end.getMonth() + 1);
+  }
+}
         // ✅ STEP 7: TRIAL CHECK (IMPORTANT)
         const isTrial = stripeSub.status === "trialing";
 
@@ -74,16 +112,21 @@ if (isTrial) {
             stripeSubscriptionId: subscriptionId,
             stripePriceId: priceId,
         
-            currentPeriodStart: start,
-            currentPeriodEnd: end,
+            startDate: start || new Date(),   // fallback
+            endDate: end || null,
+            nextRenewalDate: end || null,
         
             status: isTrial ? "TRIAL" : "ACTIVE",
             autoRenew: true,
-        
-            creditsPerCycle: 3 
+            creditsPerCycle: 3
           },
           { upsert: true }
         );
+
+        // 🔥 ADD THIS BLOCK
+
+// ❗ Trial me payment nahi hota
+
     
         // ✅ STEP 9: USER UPDATE
         await User.findByIdAndUpdate(userId, {
@@ -93,57 +136,12 @@ if (isTrial) {
        
     
         console.log("✅ Subscription created (trial or paid)");
-      }
+      }}
     
       // =====================================
       // 🔹 TOP-UP FLOW
       // =====================================
-      if (session.mode === "payment") {
-    
-        const user = await User.findOne({
-          stripeCustomerId: session.customer
-        });
-    
-        const lineItems = await stripe.checkout.sessions.listLineItems(session.id);
-        const priceId = lineItems.data[0].price.id;
-    
-        let credits = 0;
-    
-        if (priceId === process.env.STRIPE_PRICE_TOPUP_3) credits = 3;
-        if (priceId === process.env.STRIPE_PRICE_TOPUP_5) credits = 5;
-    
-        if (credits > 0) {
-          await addCredits(user._id, credits, "TOPUP");
-          console.log("💰 Top-up credits added:", credits);
-        }
-
-        const paymentIntent = await stripe.paymentIntents.retrieve(
-          session.payment_intent
-        );
-        
-        const charge = await stripe.charges.retrieve(
-          paymentIntent.latest_charge
-        );
-        
-        const balanceTx = await stripe.balanceTransactions.retrieve(
-          charge.balance_transaction
-        );
-        
-        await Transaction.create({
-          userId: user._id,
-          stripePaymentIntentId: paymentIntent.id,
-          stripeBalanceTransactionId: balanceTx.id,
-        
-          amount: balanceTx.amount / 100,
-          fee: balanceTx.fee / 100,
-          net: balanceTx.net / 100,
-        
-          currency: balanceTx.currency,
-          type: "TOPUP",
-          status: "SUCCESS"
-        });
-      }
-    }
+      
 
     // =====================================
     // ✅ 2. RENEWAL PAYMENT
@@ -157,47 +155,31 @@ if (isTrial) {
     
       if (!user) return;
     
+      console.log("💰 INVOICE PAYMENT SUCCESS");
+    
       const sub = await Subscription.findOne({ userId: user._id });
+      if (!sub) return;
+
+      if (sub.status === "CANCELLED") {
+        console.log("⛔ Skipping update - subscription already cancelled");
+        return;
+      }
     
       if (sub.lastInvoiceId === invoice.id) return;
     
-      // ✅ credits reset
       await resetCredits(user._id);
       await addCredits(user._id, sub.creditsPerCycle || 3, "RENEWAL");
     
-      // ✅ TRIAL → ACTIVE conversion
       await User.findByIdAndUpdate(user._id, {
         subscriptionStatus: "ACTIVE"
       });
     
+      sub.status = "ACTIVE";
       sub.lastInvoiceId = invoice.id;
     
-      sub.currentPeriodStart = new Date(invoice.period_start * 1000);
-      sub.currentPeriodEnd = new Date(invoice.period_end * 1000);
-    
       await sub.save();
-
-      const charge = await stripe.charges.retrieve(invoice.charge);
-
-const balanceTx = await stripe.balanceTransactions.retrieve(
-  charge.balance_transaction
-);
-
-await Transaction.create({
-  userId: user._id,
-  stripePaymentIntentId: charge.payment_intent,
-  stripeBalanceTransactionId: balanceTx.id,
-
-  amount: balanceTx.amount / 100,
-  fee: balanceTx.fee / 100,
-  net: balanceTx.net / 100,
-
-  currency: balanceTx.currency,
-  type: "SUBSCRIPTION",
-  status: "SUCCESS"
-});
     
-      console.log("🔄 Subscription renewed or trial converted");
+      console.log("✅ Credits updated (NO TRANSACTION HERE)");
     }
 
     // =====================================
@@ -234,32 +216,60 @@ await Transaction.create({
       }
       
       // duplicate check
-      if (sub.lastInvoiceId === invoice.id) return;
-      const isUpgrade = sub.stripePriceId !== priceId;
+      
+      const oldPrice = sub.stripePriceId;
+      const newPrice = priceId;
+      
+      const isUpgrade =
+        oldPrice === process.env.STRIPE_PRICE_MONTHLY &&
+        newPrice === process.env.STRIPE_PRICE_YEARLY;
+      
+      const isDowngrade =
+        oldPrice === process.env.STRIPE_PRICE_YEARLY &&
+        newPrice === process.env.STRIPE_PRICE_MONTHLY;
     
-      // =====================================
-      // 🔥 UPGRADE DETECTED
-      // =====================================
-      if (isUpgrade) {
-    
-        console.log("🚀 PLAN UPGRADED");
-    
-        // ❌ reset old credits
-        await resetCredits(user._id);
-    
-        // ✅ new credits
-        await addCredits(user._id, 3, "RENEWAL");
-      }
-    
-      await Subscription.findOneAndUpdate(
-        { userId: user._id },
-        {
-          planType,
-          stripePriceId: priceId,
-          cancelAtPeriodEnd,
-          autoRenew: !cancelAtPeriodEnd
+        if (isUpgrade) {
+          console.log("🚀 UPGRADE");
+        
+          await resetCredits(user._id);
+          await addCredits(user._id, 3, "RENEWAL");
+        
+          await Subscription.findOneAndUpdate(
+            { userId: user._id },
+            {
+              planType: "YEARLY",
+              stripePriceId: newPrice,
+              status: "ACTIVE" // 🔥 IMPORTANT
+            }
+          );
+        
+          await User.findByIdAndUpdate(user._id, {
+            subscriptionStatus: "ACTIVE" // 🔥 IMPORTANT
+          });
         }
-      );
+        
+        if (isDowngrade) {
+          console.log("📅 DOWNGRADE SCHEDULED");
+        
+          // ❌ plan change mat karo abhi
+          // Stripe baad me karega
+        
+          await Subscription.findOneAndUpdate(
+            { userId: user._id },
+            {
+              // keep yearly
+              stripePriceId: oldPrice,
+            }
+          );
+        }
+    
+        await Subscription.findOneAndUpdate(
+          { userId: user._id },
+          {
+            cancelAtPeriodEnd: stripeSub.cancel_at_period_end,
+            autoRenew: stripeSub.cancel_at_period_end ? false : true
+          }
+        );
     
       console.log("✅ Subscription updated (upgrade/cancel)");
     }
@@ -291,21 +301,192 @@ await Transaction.create({
       console.log("❌ Subscription cancelled fully");
     }
 
-    if (event.type === "charge.refunded") {
+    // =====================================
+// ✅ 4. CHARGE SUCCESS (FINAL )
+if (event.type === "charge.succeeded") {
 
-      const charge = event.data.object;
-    
-      await Transaction.findOneAndUpdate(
-        { stripePaymentIntentId: charge.payment_intent },
-        { status: "REFUNDED" }
-      );
-    
-      console.log("💸 Refund processed");
-    }
+  const charge = event.data.object;
 
-  } catch (error) {
-    console.log("❌ Webhook error:", error.message);
+  console.log("🔥 CHARGE EVENT START");
+  console.log("👉 PI:", charge.payment_intent);
+
+  const txnId = charge.payment_intent;
+  if (!txnId) return;
+
+  const existing = await Transaction.findOne({
+    stripePaymentIntentId: txnId
+  });
+
+  if (existing) {
+    console.log("⚠️ Duplicate transaction");
+    return;
   }
 
-  res.json({ received: true });
+  // ===== DEFAULT =====
+  let amount = charge.amount / 100;
+  let fee = 0;
+  let net = amount;
+  let currency = charge.currency;
+
+  // ===== GET REAL FEE =====
+  if (charge.balance_transaction) {
+    try {
+      const balanceTx = await stripe.balanceTransactions.retrieve(
+        charge.balance_transaction
+      );
+
+      amount = balanceTx.amount / 100;
+      fee = balanceTx.fee / 100;
+      net = balanceTx.net / 100;
+      currency = balanceTx.currency;
+
+      console.log("💰 Fee loaded");
+    } catch {
+      console.log("⚠️ Fee fetch failed");
+    }
+  }
+
+  const user = await User.findOne({
+    stripeCustomerId: charge.customer
+  });
+
+  if (!user) return;
+
+  // =================================
+  // 🔥 PLAN TYPE FIX (FINAL)
+  // =================================
+
+  const paymentIntent = await stripe.paymentIntents.retrieve(txnId);
+
+  console.log("🧠 METADATA:", paymentIntent.metadata);
+
+  let planType = "TOPUP";
+
+  // ✅ TOPUP FIRST
+  if (paymentIntent.metadata?.type === "TOPUP") {
+
+    planType = "TOPUP";
+    console.log("💰 TOPUP DETECTED");
+
+  } else {
+
+    const sub = await Subscription.findOne({
+      userId: user._id
+    });
+
+    if (sub && sub.planType) {
+      planType = sub.planType;
+      console.log("✅ PLAN FROM SUB:", planType);
+    }
+  }
+
+  console.log("🎯 FINAL PLAN:", planType);
+
+  // =================================
+  // ✅ SAVE TRANSACTION
+  // =================================
+  await Transaction.create({
+    userId: user._id,
+    stripePaymentIntentId: txnId,
+    stripeBalanceTransactionId: charge.balance_transaction,
+    amount,
+    fee,
+    net,
+    currency,
+    planType,
+    status: "SUCCESS"
+  });
+
+  // =================================
+  // 🔥 SUBSCRIPTION FIRST PAYMENT
+  // =================================
+  if (planType === "MONTHLY" || planType === "YEARLY") {
+
+    const sub = await Subscription.findOne({
+      userId: user._id
+    });
+
+    if (sub) {
+      await resetCredits(user._id);
+
+      await addCredits(
+        user._id,
+        sub.creditsPerCycle || 3,
+        "RENEWAL"
+      );
+
+      sub.status = "ACTIVE";
+      await sub.save();
+
+      await User.findByIdAndUpdate(user._id, {
+        subscriptionStatus: "ACTIVE"
+      });
+
+      console.log("✅ Subscription credits added");
+    }
+  }
+
+  // =================================
+  // 🔥 TOPUP CREDITS
+  // =================================
+  if (planType === "TOPUP") {
+
+    const priceId = paymentIntent.metadata?.priceId;
+
+    let credits = 0;
+
+    if (priceId === process.env.STRIPE_PRICE_TOPUP_3) credits = 3;
+    if (priceId === process.env.STRIPE_PRICE_TOPUP_5) credits = 5;
+
+    if (credits > 0) {
+      await addCredits(user._id, credits, "TOPUP");
+      console.log("💰 TOPUP credits added:", credits);
+    }
+  }
+
+  // =================================
+  // 🔥 RETRY FEE (IF NULL)
+  // =================================
+  if (!charge.balance_transaction) {
+
+    console.log("⚠️ Fee retry...");
+
+    setTimeout(async () => {
+      try {
+        const pi = await stripe.paymentIntents.retrieve(txnId);
+
+        if (pi.latest_charge) {
+          const ch = await stripe.charges.retrieve(pi.latest_charge);
+
+          if (ch.balance_transaction) {
+            const balanceTx = await stripe.balanceTransactions.retrieve(
+              ch.balance_transaction
+            );
+
+            await Transaction.findOneAndUpdate(
+              { stripePaymentIntentId: txnId },
+              {
+                fee: balanceTx.fee / 100,
+                net: balanceTx.net / 100
+              }
+            );
+
+            console.log("✅ Fee updated after retry");
+          }
+        }
+      } catch {
+        console.log("❌ Retry failed");
+      }
+    }, 5000);
+  }
+
+  console.log("💰 Transaction done");
+}
+
+} catch (error) {
+console.log("❌ Webhook error:", error.message);
+}
+
+res.status(200).send("OK");
 };
+

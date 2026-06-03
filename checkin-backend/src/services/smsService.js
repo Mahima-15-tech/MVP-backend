@@ -24,6 +24,7 @@ exports.sendSMS = async ({
       recipientNumber,
       type,
       status: "SENT",
+      retryCount: 1, // 👈 ADD
       plivoMessageId: sms.sid
     });
 
@@ -36,6 +37,7 @@ exports.sendSMS = async ({
       recipientNumber,
       type,
       status: "FAILED",
+      retryCount: 1,
       failureReason: error.message
     });
 

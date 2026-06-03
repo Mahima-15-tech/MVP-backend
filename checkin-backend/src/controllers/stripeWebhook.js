@@ -1,5 +1,6 @@
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const Transaction = require("../models/Transaction");
+const SubscriptionHistory = require("../models/SubscriptionHistory");
 
 const User = require("../models/User");
 const Subscription = require("../models/subscription");
@@ -104,6 +105,15 @@ if (isTrial) {
   await addCredits(userId, 1, "TRIAL");
 }
     
+
+const existingSub = await Subscription.findOne({ userId });
+
+await SubscriptionHistory.create({
+  userId,
+  previousPlan: existingSub?.planType || "NONE",
+  newPlan: planType,
+  changedBy: "STRIPE"
+});
         // ✅ STEP 8: DB update
         await Subscription.findOneAndUpdate(
           { userId },
@@ -160,6 +170,14 @@ if (isTrial) {
       const sub = await Subscription.findOne({ userId: user._id });
       if (!sub) return;
 
+      await SubscriptionHistory.create({
+        userId: user._id,
+        previousPlan: sub.planType,
+        newPlan: sub.planType,
+        changedBy: "RENEWAL"
+      });
+
+
       if (sub.status === "CANCELLED") {
         console.log("⛔ Skipping update - subscription already cancelled");
         return;
@@ -178,6 +196,8 @@ if (isTrial) {
       sub.lastInvoiceId = invoice.id;
     
       await sub.save();
+
+      
     
       console.log("✅ Credits updated (NO TRANSACTION HERE)");
     }
@@ -230,6 +250,13 @@ if (isTrial) {
     
         if (isUpgrade) {
           console.log("🚀 UPGRADE");
+
+          await SubscriptionHistory.create({
+            userId: user._id,
+            previousPlan: "MONTHLY",
+            newPlan: "YEARLY",
+            changedBy: "STRIPE_UPGRADE"
+          });
         
           await resetCredits(user._id);
           await addCredits(user._id, 3, "RENEWAL");
@@ -250,6 +277,13 @@ if (isTrial) {
         
         if (isDowngrade) {
           console.log("📅 DOWNGRADE SCHEDULED");
+
+          await SubscriptionHistory.create({
+            userId: user._id,
+            previousPlan: "YEARLY",
+            newPlan: "MONTHLY",
+            changedBy: "STRIPE_DOWNGRADE"
+          });
         
           // ❌ plan change mat karo abhi
           // Stripe baad me karega
@@ -278,6 +312,15 @@ if (isTrial) {
     // ❌ FINAL CANCEL
     // =====================================
     if (event.type === "customer.subscription.deleted") {
+
+      await SubscriptionHistory.create({
+        userId: user._id,
+        previousPlan: "ACTIVE",
+        newPlan: "CANCELLED",
+        changedBy: "STRIPE"
+      });
+
+      
       const sub = event.data.object;
 
       const user = await User.findOne({
@@ -483,10 +526,13 @@ if (event.type === "charge.succeeded") {
   console.log("💰 Transaction done");
 }
 
+
+
 } catch (error) {
 console.log("❌ Webhook error:", error.message);
 }
 
 res.status(200).send("OK");
 };
+
 

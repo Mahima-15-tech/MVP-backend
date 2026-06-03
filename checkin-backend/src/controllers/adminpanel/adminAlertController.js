@@ -9,26 +9,26 @@ exports.getAlertMonitoring = async (req, res) => {
 
     const match = {};
 
-if(req.query.type && req.query.type !== "ALL"){
-match.type = req.query.type;
-}
-
-if(req.query.status && req.query.status !== "ALL"){
-match.status = req.query.status;
-}
-
-if(req.query.plan && req.query.plan !== "ALL"){
-match["subscription.planType"] = req.query.plan;
-}
-
-const search = req.query.search;
-
-if (search) {
-  match.$or = [
-    { "user.name": { $regex: search, $options: "i" } },
-    { "user.phone": { $regex: search, $options: "i" } }
-  ];
-}
+    if(req.query.type && req.query.type !== "ALL"){
+      match.type = req.query.type;
+    }
+    
+    if(req.query.status && req.query.status !== "ALL"){
+      match.status = req.query.status;
+    }
+    
+    if(req.query.plan && req.query.plan !== "ALL"){
+      match["subscription.planType"] = req.query.plan;
+    }
+    
+    const search = req.query.search;
+    
+    if (search) {
+      match.$or = [
+        { "user.name": { $regex: search, $options: "i" } },
+        { "user.phone": { $regex: search, $options: "i" } }
+      ];
+    }
 
     const alerts = await Alert.aggregate([
       

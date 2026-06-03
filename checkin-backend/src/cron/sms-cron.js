@@ -55,7 +55,7 @@ cron.schedule("*/2 * * * *", async () => {
 const message = `🚨 ALERT! User needs help.\nLocation: ${locationLink}`;
 
 try {
-
+  console.log("🔥 ALERT TYPE FROM DB:", alert.type);
   await sendSMS({
     userId: alert.userId,
     alertId: alert._id,

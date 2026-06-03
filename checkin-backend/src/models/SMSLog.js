@@ -41,6 +41,11 @@ const smsLogSchema = new mongoose.Schema({
     default: 5
   },
 
+  type: {
+    type: String,
+    enum: ["CONSENT", "SOS_ALERT", "MISSED_ALERT"]
+  },
+
   plivoMessageId: String,
   lastAttemptAt: Date,
   nextRetryAt: Date,

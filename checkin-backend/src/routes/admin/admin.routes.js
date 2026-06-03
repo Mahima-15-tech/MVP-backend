@@ -53,6 +53,14 @@ require("../../controllers/adminpanel/Resetpasswordcontroller");
 const { getSystemHealth } =
 require("../../controllers/adminpanel/adminSystem.controller");
 
+
+// const { getSMSLogs } = require("../controllers/admin/adminsmscontroller");
+
+
+
+
+
+
 const {
   getMyProfile,
   changePassword,
@@ -177,6 +185,8 @@ router.post(
   requireSuperAdmin,
   createAdmin
 );
+
+router.get("/sms-tracker", getSMSLogs);
 
 router.get(
   "/admins",

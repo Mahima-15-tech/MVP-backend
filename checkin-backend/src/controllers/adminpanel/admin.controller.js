@@ -219,66 +219,80 @@ if (from && to) {
   },
   
   {
-  $addFields:{
-  
-  plan:{ $arrayElemAt:["$subscription.planType",0] },
-  
-  renewal:{ $arrayElemAt:["$subscription.nextRenewalDate",0] },
-  
-  alertsSent:{ $size:"$alerts" },
-  
-  lastAlertType:{ $arrayElemAt:["$alerts.type",-1] },
-  
-  checkinTimes:{ $arrayElemAt:["$checkins.checkInTimes",0] },
-  
-  alertCredits:{
-  $cond:[
-  { $gt:[{ $size:"$credits"},0] },
-  { $arrayElemAt:["$credits.balanceAfter",-1] },
-  0
-  ]
-  }
-  
-  }
+    $lookup:{
+      from:"emergencycontacts",
+      localField:"_id",
+      foreignField:"userId",
+      as:"contacts"
+    }
+  },
+
+  {
+    $addFields:{
+
+      plan:{ $arrayElemAt:["$subscription.planType",0] },
+      
+      renewal:{ $arrayElemAt:["$subscription.nextRenewalDate",0] },
+      
+      alertsSent:{ $size:"$alerts" },
+      
+      lastAlertType:{ $arrayElemAt:["$alerts.type",-1] },
+      
+      checkinTimes:{ $arrayElemAt:["$checkins.checkInTimes",0] },
+    
+      contactsCount: { $size: "$contacts" },
+    
+      // ✅ FIX HERE
+      nameCompleted: { $ifNull: ["$nameCompleted", false] },
+      emailCompleted: { $ifNull: ["$emailCompleted", false] },
+    
+      alertCredits:{
+        $cond:[
+          { $gt:[{ $size:"$credits"},0] },
+          { $arrayElemAt:["$credits.balanceAfter",-1] },
+          0
+        ]
+      }
+    
+    }
   
   },
   
   {
-  $project:{
-  
-  userId:"$phone",
-  
-  name:1,
-  
-  joined:"$createdAt",
-  
-  plan:{
-  $cond:[
-  { $ifNull:["$plan",false] },
-  "$plan",
-  "NO PLAN"
-  ]
-  },
-  
-  renewal:1,
-  
-  alertCredits:1,
-  
-  checkinTimes:1,
-  
-  alertsSent:1,
-  
-  lastAlertType:1,
-  
-  status:{
-  $cond:[
-  { $eq:["$isBanned",true] },
-  "BANNED",
-  "ACTIVE"
-  ]
-  }
-  
-  }
+    $project: {
+      userId: "$phone",
+      name: 1,
+      email: "$email",
+    
+      nameCompleted: "$nameCompleted",
+      emailCompleted: "$emailCompleted",
+    
+      joined: "$createdAt",
+    
+      plan: {
+        $cond: [
+          { $ifNull: ["$plan", false] },
+          "$plan",
+          "NO PLAN"
+        ]
+      },
+    
+      renewal: 1,
+      alertCredits: 1,
+      checkinTimes: 1,
+      alertsSent: 1,
+      lastAlertType: 1,
+    
+      contactsCount: { $ifNull: ["$contactsCount", 0] },
+    
+      status: {
+        $cond: [
+          { $eq: ["$isBanned", true] },
+          "BANNED",
+          "ACTIVE"
+        ]
+      }
+    }
   
   },
   
@@ -318,7 +332,6 @@ if (from && to) {
   const bannedUsers = await User.countDocuments({ isBanned:true })
   
   const pendingVerification = await User.countDocuments({
-    isVerified: true,
     $or: [
       { nameCompleted: false },
       { emailCompleted: false }

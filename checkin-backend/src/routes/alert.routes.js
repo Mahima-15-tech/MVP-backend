@@ -18,4 +18,5 @@ router.post("/sos/confirm", auth, confirmSOS);
 router.post("/sos/cancel", auth, cancelSOS);
 router.post("/sos", auth, triggerSOS);
 
+
 module.exports = router;

@@ -4,7 +4,7 @@ exports.getAlertMonitoring = async (req, res) => {
   try {
 
     const page = parseInt(req.query.page) || 1;
-    const limit = 20;
+    const limit = 1000;
     const skip = (page - 1) * limit;
 
     const match = {};
@@ -16,19 +16,22 @@ exports.getAlertMonitoring = async (req, res) => {
     if(req.query.status && req.query.status !== "ALL"){
       match.status = req.query.status;
     }
-    
+
     if(req.query.plan && req.query.plan !== "ALL"){
       match["subscription.planType"] = req.query.plan;
     }
     
     const search = req.query.search;
-    
-    if (search) {
+
+    if (search && search.trim() !== "") {
       match.$or = [
         { "user.name": { $regex: search, $options: "i" } },
         { "user.phone": { $regex: search, $options: "i" } }
       ];
     }
+
+    console.log("REQ QUERY 👉", req.query);
+console.log("MATCH 👉", match);
 
     const alerts = await Alert.aggregate([
       
@@ -41,7 +44,7 @@ exports.getAlertMonitoring = async (req, res) => {
         }
       },
       
-      { $unwind: "$user" },
+      { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
 
       {
         $lookup: {
@@ -108,7 +111,103 @@ exports.getAlertMonitoring = async (req, res) => {
 
     ]);
 
+    console.log("ALERTS COUNT 👉", alerts.length);
+
     res.json(alerts);
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getAlertStats = async (req, res) => {
+  try {
+
+    const match = {};
+
+    if (req.query.type && req.query.type !== "ALL") {
+      match.type = req.query.type;
+    }
+
+    if (req.query.status && req.query.status !== "ALL") {
+      match.status = req.query.status;
+    }
+
+    const search = req.query.search;
+
+    if (search && search.trim() !== "") {
+      match.$or = [
+        { "user.name": { $regex: search, $options: "i" } },
+        { "user.phone": { $regex: search, $options: "i" } }
+      ];
+    }
+
+    // ✅ DIRECT ALERT COLLECTION PAR KAAM KARO (NO LOOKUP NEEDED)
+
+    const statsData = await Alert.aggregate([
+      { $match: match },
+    
+      {
+        $group: {
+          _id: null,
+    
+          totalAlerts: { $sum: 1 },
+    
+          smsSent: {
+            $sum: { $cond: [{ $eq: ["$status", "SMS_SENT"] }, 1, 0] }
+          },
+    
+          smsPending: {
+            $sum: { $cond: [{ $eq: ["$status", "SMS_PENDING"] }, 1, 0] }
+          },
+    
+          smsFailed: {
+            $sum: { $cond: [{ $eq: ["$status", "FAILED"] }, 1, 0] }
+          },
+    
+          missedSent: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ["$type", "MISSED_CHECKIN"] },
+                    { $eq: ["$status", "SMS_SENT"] }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+    
+          sosSent: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ["$type", "SOS"] },
+                    { $eq: ["$status", "SMS_SENT"] }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          }
+        }
+      }
+    ]);
+    
+    const data = statsData[0] || {};
+    
+    res.json({
+      usersTriggered: data.totalAlerts || 0, // 👈 bas yahi change
+      smsSent: data.smsSent || 0,
+      smsPending: data.smsPending || 0,
+      smsFailed: data.smsFailed || 0,
+      missedSent: data.missedSent || 0,
+      sosSent: data.sosSent || 0
+    });
 
   } catch (error) {
     res.status(500).json({ message: error.message });

@@ -28,7 +28,7 @@ let totalFee = 0;
     const now = new Date();
     
     // ✅ PRIORITY 1 → CUSTOM DATE
-    if (from && to) {
+    if (from && to && month === "CUSTOM") {
 
       const fromDate = new Date(from);
       fromDate.setHours(0, 0, 0, 0);   // ✅ start of day
@@ -38,13 +38,15 @@ let totalFee = 0;
 
       console.log("FROM DATE:", fromDate);   // 👈 ADD HERE
   console.log("TO DATE:", toDate);    
-  console.log("FILTER:", filter);
+
     
       filter.createdAt = {
         $gte: fromDate,
         $lte: toDate
       };
+      console.log("FILTER:", filter);
     }
+    
     
     // ✅ PRIORITY 2 → MONTH FILTER (ONLY IF NO CUSTOM DATE)
     else {
@@ -89,6 +91,8 @@ let totalFee = 0;
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
+
+      console.log("TRANSACTION RAW 👉", transactions);
     
     const total = await Transaction.countDocuments(filter);
 
@@ -122,7 +126,8 @@ let totalFee = 0;
           gross: totalGross,
           net: totalNet,
           fee: totalFee
-        }
+        },
+        totalCount: total
       });
 
   } catch (err) {

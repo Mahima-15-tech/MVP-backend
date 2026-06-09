@@ -38,7 +38,7 @@ const {
 const { getDashboardSummary } =
 require("../../controllers/adminpanel/adminDashboardController");
 
-const { getAlertMonitoring } =
+const { getAlertMonitoring, getAlertStats } =
 require("../../controllers/adminpanel/adminAlertController");
 
 const { getPushLogs } =
@@ -52,6 +52,8 @@ require("../../controllers/adminpanel/Resetpasswordcontroller");
 
 const { getSystemHealth } =
 require("../../controllers/adminpanel/adminSystem.controller");
+
+
 
 
 // const { getSMSLogs } = require("../controllers/admin/adminsmscontroller");
@@ -168,6 +170,7 @@ router.post("/refund", refundPayment);
 router.get("/alerts", adminAuth, getAlerts);
 
 router.get("/alert-monitoring", adminAuth, getAlertMonitoring);
+router.get("/alert-stats",adminAuth, getAlertStats);
 
 /* ================= CHECKINS ================= */
 

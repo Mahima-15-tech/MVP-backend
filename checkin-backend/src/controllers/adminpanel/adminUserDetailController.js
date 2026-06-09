@@ -297,6 +297,7 @@ exports.getUsers = async (req, res) => {
     const users = await User.find()
       .sort({ createdAt: -1 })
       .lean();
+      
 
     const subscriptions = await Subscription.find();
 

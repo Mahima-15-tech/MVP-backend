@@ -14,7 +14,7 @@ exports.getDashboardSummary = async (req, res) => {
 
     const [
       totalUsers, 
-      activeSubscriptions,
+   
       alertsToday,
       failedSMS,
       retryInProgress,
@@ -24,13 +24,16 @@ exports.getDashboardSummary = async (req, res) => {
 
       User.countDocuments(),
 
-      Subscription.countDocuments({ status: "ACTIVE" }),
+     
 
-      Alert.countDocuments({ createdAt: { $gte: todayStart } }),
+      Alert.countDocuments({
+        status: { $in: ["SMS_SENT", "SENT"] },
+        createdAt: { $gte: todayStart }
+      }),
 
       // ✅ FIXED (24h)
       Alert.countDocuments({
-        status: "FAILED",
+        status: { $in: ["FAILED", "SMS_FAILED"] },
         createdAt: { $gte: last24h }
       }),
 
@@ -52,7 +55,7 @@ exports.getDashboardSummary = async (req, res) => {
       ]),
 
       // ✅ NEW
-      Alert.countDocuments({ status: "SUCCESS" })
+      Alert.countDocuments({ status: "SMS_SENT" })
 
     ]);
 
@@ -71,6 +74,21 @@ exports.getDashboardSummary = async (req, res) => {
       })
     
     ]);
+    const activeSubscribersAgg = await Subscription.aggregate([
+      { $match: { status: "ACTIVE" } },
+      {
+        $group: { _id: "$userId" } // ✅ unique users
+      },
+      {
+        $count: "count"
+      }
+    ]);
+    
+    const activeSubscriptions = activeSubscribersAgg[0]?.count || 0;
+
+    
+    
+    
     /* ================= PLAN DISTRIBUTION ================= */
 
     const planCounts = await Subscription.aggregate([
@@ -106,7 +124,7 @@ exports.getDashboardSummary = async (req, res) => {
       missedToday,
       sosToday,
       smsConfirmed,
-
+      activeSubscriptions,
       freeTrialUsers,
       monthlyUsers,
       yearlyUsers,

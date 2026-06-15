@@ -192,17 +192,36 @@ exports.redeemPromo = async (req, res) => {
     });
   };
 
-  exports.getPromoStats = async (req, res) => {
+exports.getPromoStats = async (req, res) => {
+  try {
+
+    const now = new Date();
+
     const total = await Promo.countDocuments();
+
     const redeemed = await Promo.countDocuments({ isRedeemed: true });
+
     const expired = await Promo.countDocuments({
-      expiresAt: { $lt: new Date() }
+      expiresAt: { $ne: null, $lt: now }, // ✅ FIX
+      isRedeemed: false                   // ✅ optional but better
     });
-  
+
+    const notRedeemed = await Promo.countDocuments({
+      isRedeemed: false,
+      $or: [
+        { expiresAt: null },
+        { expiresAt: { $gte: now } }
+      ]
+    });
+
     res.json({
       total,
       redeemed,
       expired,
-      notRedeemed: total - redeemed - expired
+      notRedeemed
     });
-  };
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};

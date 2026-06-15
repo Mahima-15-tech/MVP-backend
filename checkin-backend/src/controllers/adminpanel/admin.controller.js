@@ -144,299 +144,496 @@ exports.getUsers = async (req, res) => {
 
 exports.getUsersDashboardUltra = async (req, res) => {
   try {
-  
-  const page = parseInt(req.query.page) || 1
-  const limit = parseInt(req.query.limit) || 10
-  const skip = (page - 1) * limit
-  
-  const search = req.query.search || ""
-  
-  let match = {}
-  
-  if(search){
-  match.$or = [
-  { name:{ $regex:search,$options:"i"} },
-  { phone:{ $regex:search,$options:"i"} }
-  ]
-  }
 
-  const from = req.query.from;
-const to = req.query.to;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
 
-if (from && to) {
-  const start = new Date(from);
-  start.setHours(0,0,0,0);
+    const search = req.query.search || "";
+    const filterType = req.query.filter;
 
-  const end = new Date(to);
-  end.setHours(23,59,59,999);
+    let match = {};
 
-  match.createdAt = {
-    $gte: start,
-    $lte: end
-  };
-}
-  
-  const usersPipeline = [
-  
-  { $match:match },
-  
-  { $sort:{ createdAt:-1 } },
-  
-  {
-  $lookup:{
-  from:"subscriptions",
-  localField:"_id",
-  foreignField:"userId",
-  as:"subscription"
-  }
-  },
-  
-  {
-  $lookup:{
-  from:"alerts",
-  localField:"_id",
-  foreignField:"userId",
-  as:"alerts"
-  }
-  },
-  
-  {
-  $lookup:{
-  from:"checkinschedules",
-  localField:"_id",
-  foreignField:"userId",
-  as:"checkins"
-  }
-  },
-  
-  {
-  $lookup:{
-  from:"credittransactions",
-  localField:"_id",
-  foreignField:"userId",
-  as:"credits"
-  }
-  },
-  
-  {
-    $lookup:{
-      from:"emergencycontacts",
-      localField:"_id",
-      foreignField:"userId",
-      as:"contacts"
+    /* -------- SEARCH -------- */
+    if (search) {
+      match.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { phone: { $regex: search, $options: "i" } }
+      ];
     }
-  },
 
-  {
-    $addFields:{
+    /* -------- DATE FILTER -------- */
+    const from = req.query.from;
+    const to = req.query.to;
 
-      plan:{ $arrayElemAt:["$subscription.planType",0] },
-      
-      renewal:{ $arrayElemAt:["$subscription.nextRenewalDate",0] },
-      
-      alertsSent:{ $size:"$alerts" },
-      
-      lastAlertType:{ $arrayElemAt:["$alerts.type",-1] },
-      
-      checkinTimes:{ $arrayElemAt:["$checkins.checkInTimes",0] },
-    
-      contactsCount: { $size: "$contacts" },
-    
-      // ✅ FIX HERE
-      nameCompleted: { $ifNull: ["$nameCompleted", false] },
-      emailCompleted: { $ifNull: ["$emailCompleted", false] },
-    
-      alertCredits:{
-        $cond:[
-          { $gt:[{ $size:"$credits"},0] },
-          { $arrayElemAt:["$credits.balanceAfter",-1] },
-          0
-        ]
+    if (from && to) {
+      const start = new Date(from);
+      start.setHours(0, 0, 0, 0);
+
+      const end = new Date(to);
+      end.setHours(23, 59, 59, 999);
+
+      match.createdAt = {
+        $gte: start,
+        $lte: end
+      };
+    }
+
+    /* -------- BANNED FILTER (early match) -------- */
+    if (filterType === "BANNED") {
+      match.isBanned = true;
+    }
+
+    const usersPipeline = [
+
+      { $match: match },
+
+      { $sort: { createdAt: -1 } },
+
+      {
+        $lookup: {
+          from: "subscriptions",
+          localField: "_id",
+          foreignField: "userId",
+          as: "subscription"
+        }
+      },
+
+      {
+        $lookup: {
+          from: "alerts",
+          localField: "_id",
+          foreignField: "userId",
+          as: "alerts"
+        }
+      },
+
+      {
+        $lookup: {
+          from: "checkinschedules",
+          localField: "_id",
+          foreignField: "userId",
+          as: "checkins"
+        }
+      },
+
+      {
+        $lookup: {
+          from: "credittransactions",
+          localField: "_id",
+          foreignField: "userId",
+          as: "credits"
+        }
+      },
+
+      {
+        $lookup: {
+          from: "emergencycontacts",
+          localField: "_id",
+          foreignField: "userId",
+          as: "contacts"
+        }
+      },
+
+      {
+        $addFields: {
+
+          plan: { $arrayElemAt: ["$subscription.planType", 0] },
+
+          subscriptionStatus: { $arrayElemAt: ["$subscription.status", 0] },
+
+          renewal: { $arrayElemAt: ["$subscription.nextRenewalDate", 0] },
+
+          alertsSent: { $size: "$alerts" },
+
+          lastAlertType: { $arrayElemAt: ["$alerts.type", -1] },
+
+          checkinTimes: { $arrayElemAt: ["$checkins.checkInTimes", 0] },
+
+          contactsCount: { $size: "$contacts" },
+
+          nameCompleted: { $ifNull: ["$nameCompleted", false] },
+
+          emailCompleted: { $ifNull: ["$emailCompleted", false] },
+
+          alertCredits: {
+            $cond: [
+              { $gt: [{ $size: "$credits" }, 0] },
+              { $arrayElemAt: ["$credits.balanceAfter", -1] },
+              0
+            ]
+          }
+
+        }
+      },
+
+      /* 🔥 MAIN FILTER (CARD CLICK FILTER HERE) */
+      {
+        $match: {
+
+          ...(filterType === "TRIAL" && { plan: "TRIAL" }),
+
+          ...(filterType === "ACTIVE" && {
+            subscriptionStatus: "ACTIVE"
+          }),
+
+          ...(filterType === "EXPIRED" && {
+            subscriptionStatus: { $in: ["EXPIRED", "CANCELLED"] }
+          }),
+
+          ...(filterType === "PENDING_VERIFICATION" && {
+            $or: [
+              { nameCompleted: false },
+              { emailCompleted: false }
+            ]
+          }),
+
+          ...(filterType === "NO_CONTACTS" && {
+            contactsCount: 0
+          }),
+
+          ...(filterType === "LOW_CREDITS" && {
+            alertCredits: { $lt: 2 }
+          })
+
+        }
+      },
+
+      {
+        $project: {
+          userId: "$phone",
+          name: 1,
+          email: 1,
+
+          nameCompleted: 1,
+          emailCompleted: 1,
+
+          joined: "$createdAt",
+
+          plan: {
+            $cond: [
+              { $ifNull: ["$plan", false] },
+              "$plan",
+              "NO PLAN"
+            ]
+          },
+
+          renewal: 1,
+          alertCredits: 1,
+          checkinTimes: 1,
+          alertsSent: 1,
+          lastAlertType: 1,
+
+          contactsCount: 1,
+
+          status: {
+            $cond: [
+              { $eq: ["$isBanned", true] },
+              "BANNED",
+              "ACTIVE"
+            ]
+          }
+        }
+      },
+
+      {
+        $facet: {
+
+          data: [
+            { $skip: skip },
+            { $limit: limit }
+          ],
+
+          total: [
+            { $count: "count" }
+          ]
+
+        }
       }
-    
-    }
-  
-  },
-  
-  {
-    $project: {
-      userId: "$phone",
-      name: 1,
-      email: "$email",
-    
-      nameCompleted: "$nameCompleted",
-      emailCompleted: "$emailCompleted",
-    
-      joined: "$createdAt",
-    
-      plan: {
-        $cond: [
-          { $ifNull: ["$plan", false] },
-          "$plan",
-          "NO PLAN"
-        ]
+
+    ];
+
+    const usersResult = await User.aggregate(usersPipeline);
+
+    const usersData = usersResult[0].data;
+    const totalUsers = usersResult[0].total[0]?.count || 0;
+
+    /* -------- STATS -------- */
+
+    const trialUsersAgg = await Subscription.aggregate([
+
+      {
+        $match: { planType: "TRIAL" }
       },
     
-      renewal: 1,
-      alertCredits: 1,
-      checkinTimes: 1,
-      alertsSent: 1,
-      lastAlertType: 1,
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "user"
+        }
+      },
     
-      contactsCount: { $ifNull: ["$contactsCount", 0] },
+      { $unwind: "$user" },
     
-      status: {
-        $cond: [
-          { $eq: ["$isBanned", true] },
-          "BANNED",
-          "ACTIVE"
-        ]
+      {
+        $match: {
+          ...(search && {
+            $or: [
+              { "user.name": { $regex: search, $options: "i" } },
+              { "user.phone": { $regex: search, $options: "i" } }
+            ]
+          }),
+    
+          ...(from && to && {
+            "user.createdAt": {
+              $gte: new Date(from),
+              $lte: new Date(to)
+            }
+          })
+        }
+      },
+    
+      {
+        $group: { _id: "$userId" }
+      },
+    
+      {
+        $count: "count"
       }
-    }
-  
-  },
-  
-  {
-  $facet:{
-  
-  data:[
-  { $skip:skip },
-  { $limit:limit }
-  ],
-  
-  total:[
-  { $count:"count" }
-  ]
-  
+    
+    ]);
+    
+    const trialUsers = trialUsersAgg[0]?.count || 0;
+    
+   
+
+    const activeSubscribersAgg = await Subscription.aggregate([
+
+      {
+        $match: { status: "ACTIVE" }
+      },
+    
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "user"
+        }
+      },
+    
+      { $unwind: "$user" },
+    
+      {
+        $match: {
+          ...(search && {
+            $or: [
+              { "user.name": { $regex: search, $options: "i" } },
+              { "user.phone": { $regex: search, $options: "i" } }
+            ]
+          }),
+    
+          ...(from && to && {
+            "user.createdAt": {
+              $gte: new Date(from),
+              $lte: new Date(to)
+            }
+          })
+        }
+      },
+    
+      {
+        $group: { _id: "$userId" }
+      },
+    
+      {
+        $count: "count"
+      }
+    
+    ]);
+    
+    const activeSubscribers = activeSubscribersAgg[0]?.count || 0;
+    
+
+
+    const expiredAgg = await Subscription.aggregate([
+
+      {
+        $match: {
+          status: { $in: ["EXPIRED", "CANCELLED"] }
+        }
+      },
+    
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "user"
+        }
+      },
+    
+      { $unwind: "$user" },
+    
+      {
+        $match: {
+          ...(search && {
+            $or: [
+              { "user.name": { $regex: search, $options: "i" } },
+              { "user.phone": { $regex: search, $options: "i" } }
+            ]
+          }),
+    
+          ...(from && to && {
+            "user.createdAt": {
+              $gte: new Date(from),
+              $lte: new Date(to)
+            }
+          })
+        }
+      },
+    
+      {
+        $group: { _id: "$userId" }
+      },
+    
+      {
+        $count: "count"
+      }
+    
+    ]);
+    
+    const expiredCancelled = expiredAgg[0]?.count || 0;
+    
+    
+
+    const bannedUsers = await User.countDocuments({ isBanned: true });
+
+    const pendingVerification = await User.countDocuments({
+      $or: [
+        { nameCompleted: false },
+        { emailCompleted: false }
+      ]
+    });
+
+    const contactsAgg = await EmergencyContact.aggregate([
+      { $group: { _id: "$userId" } }
+    ]);
+
+    const usersWithContacts = contactsAgg.map(c => c._id);
+
+    const noContacts = await User.countDocuments({
+      _id: { $nin: usersWithContacts }
+    });
+
+    const lowCreditsAgg = await User.aggregate([
+
+      {
+        $lookup: {
+          from: "credittransactions",
+          localField: "_id",
+          foreignField: "userId",
+          as: "credits"
+        }
+      },
+    
+      {
+        $addFields: {
+          alertCredits: {
+            $cond: [
+              { $gt: [{ $size: "$credits" }, 0] },
+              { $arrayElemAt: ["$credits.balanceAfter", -1] },
+              0
+            ]
+          }
+        }
+      },
+    
+      {
+        $match: {
+          alertCredits: { $lt: 2 }
+        }
+      },
+    
+      {
+        $count: "count"
+      }
+    
+    ]);
+    
+    const lowCredits = lowCreditsAgg[0]?.count || 0;
+
+    const regionsAgg = await User.aggregate([
+      {
+        $group: {
+          _id: "$region",
+          users: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const regions = {
+      APAC: 0,
+      EMEA: 0,
+      LATAM: 0,
+      OTHER: 0
+    };
+
+    regionsAgg.forEach(r => {
+      if (regions[r._id] !== undefined) {
+        regions[r._id] = r.users;
+      } else {
+        regions.OTHER += r.users;
+      }
+    });
+
+    const countries = await User.aggregate([
+      {
+        $match: { country: { $nin: [null, ""] } }
+      },
+      {
+        $group: {
+          _id: "$country",
+          users: { $sum: 1 }
+        }
+      },
+      { $sort: { users: -1 } },
+      { $limit: 4 }
+    ]);
+
+    res.json({
+
+      stats: {
+        totalUsers,
+        trialUsers,
+        activeSubscribers,
+        expiredCancelled,
+        bannedUsers,
+        pendingVerification,
+        noContacts,
+        lowCredits
+      },
+
+      regions,
+      countries,
+
+      users: {
+        page,
+        limit,
+        total: totalUsers,
+        pages: Math.ceil(totalUsers / limit),
+        data: usersData
+      }
+
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: error.message });
   }
-  
-  }
-  
-  ]
-  
-  const usersResult = await User.aggregate(usersPipeline)
-  
-  const usersData = usersResult[0].data
-  const totalUsers = usersResult[0].total[0]?.count || 0
-  
-  /* STATS */
-  
-  const trialUsers = await Subscription.countDocuments({ planType:"TRIAL" })
-  
-  const activeSubscribers = await Subscription.countDocuments({ status:"ACTIVE" })
-  
-  const expiredCancelled = await Subscription.countDocuments({
-  status:{ $in:["EXPIRED","CANCELLED"] }
-  })
-  
-  const bannedUsers = await User.countDocuments({ isBanned:true })
-  
-  const pendingVerification = await User.countDocuments({
-    $or: [
-      { nameCompleted: false },
-      { emailCompleted: false }
-    ]
-  });
-  
-  /* CONTACTS */
-  
-  const contactsAgg = await EmergencyContact.aggregate([
-  { $group:{ _id:"$userId"} }
-  ])
-  
-  const usersWithContacts = contactsAgg.map(c=>c._id)
-  
-  const noContacts = await User.countDocuments({
-  _id:{ $nin:usersWithContacts }
-  })
-  
-  /* CREDITS */
-  
-  const creditsAgg = await CreditTransaction.aggregate([
-  { $sort:{ createdAt:-1 }},
-  {
-  $group:{
-  _id:"$userId",
-  balance:{ $first:"$balanceAfter"}
-  }
-  }
-  ])
-  
-  const lowCredits = creditsAgg.filter(c=>c.balance<2).length
-  
-  /* REGIONS */
-  
-  const regionsAgg = await User.aggregate([
-  {
-  $group:{
-  _id:"$region",
-  users:{ $sum:1 }
-  }
-  }
-  ])
-  
-  const regions = {
-  APAC:0,
-  EMEA:0,
-  LATAM:0,
-  OTHER:0
-  }
-  
-  regionsAgg.forEach(r=>{
-  if(regions[r._id] !== undefined){
-  regions[r._id] = r.users
-  }else{
-  regions.OTHER += r.users
-  }
-  })
-  
-  /* COUNTRIES */
-  
-  const countries = await User.aggregate([
-  {
-  $match:{ country:{ $nin:[null,""] } }
-  },
-  {
-  $group:{
-  _id:"$country",
-  users:{ $sum:1 }
-  }
-  },
-  { $sort:{ users:-1 }},
-  { $limit:4 }
-  ])
-  
-  res.json({
-  
-  stats:{
-  totalUsers,
-  trialUsers,
-  activeSubscribers,
-  expiredCancelled,
-  bannedUsers,
-  pendingVerification,
-  noContacts,
-  lowCredits
-  },
-  
-  regions,
-  countries,
-  
-  users:{
-  page,
-  limit,
-  total:totalUsers,
-  pages:Math.ceil(totalUsers/limit),
-  data:usersData
-  }
-  
-  })
-  
-  }catch(error){
-  console.error(error)
-  res.status(500).json({ message:error.message })
-  }
-  }
+};
 
 exports.getAlerts = async (req, res) => {
   try {

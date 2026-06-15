@@ -6,8 +6,10 @@ exports.getSMSLogs = async (req, res) => {
   try {
     const { search, consent, status, page = 1 } = req.query;
 
-    const limit = 10;
+    const limit = 5;
     const skip = (page - 1) * limit;
+    
+    
 
     let query = {};
 
@@ -25,7 +27,9 @@ exports.getSMSLogs = async (req, res) => {
     }
 
     const logs = await SMSLog.find(query)
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .skip(skip)      
+    .limit(limit); 
     const formatted = [];
 
     for (let log of logs) {
@@ -40,6 +44,11 @@ exports.getSMSLogs = async (req, res) => {
         "Pending": "PENDING"
       };
     
+      if (req.query.range === "24h") {
+        const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        query.createdAt = { $gte: last24h };
+      }
+
       // ✅ APPLY FILTER
       if (consent && consent !== "ALL") {
         const required = consentMap[consent];
@@ -93,6 +102,53 @@ exports.getSMSLogs = async (req, res) => {
       total,
       page,
       totalPages: Math.ceil(total / limit)
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+exports.getSMSStats = async (req, res) => {
+  try {
+
+    const stats = await SMSLog.aggregate([
+      {
+        $group: {
+          _id: null,
+
+          total: { $sum: 1 },
+
+          sent: {
+            $sum: {
+              $cond: [{ $eq: ["$status", "SENT"] }, 1, 0]
+            }
+          },
+
+          pending: {
+            $sum: {
+              $cond: [{ $eq: ["$status", "PENDING"] }, 1, 0]
+            }
+          },
+
+          failed: {
+            $sum: {
+              $cond: [{ $eq: ["$status", "FAILED"] }, 1, 0]
+            }
+          }
+
+        }
+      }
+    ]);
+
+    const data = stats[0] || {};
+
+    res.json({
+      total: data.total || 0,
+      sent: data.sent || 0,
+      pending: data.pending || 0,
+      failed: data.failed || 0
     });
 
   } catch (error) {

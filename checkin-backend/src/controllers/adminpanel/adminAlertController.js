@@ -4,7 +4,7 @@ exports.getAlertMonitoring = async (req, res) => {
   try {
 
     const page = parseInt(req.query.page) || 1;
-    const limit = 1000;
+    const limit = parseInt(req.query.limit) || 5; // ✅ FIX
     const skip = (page - 1) * limit;
 
     const match = {};
@@ -20,7 +20,7 @@ exports.getAlertMonitoring = async (req, res) => {
     if(req.query.plan && req.query.plan !== "ALL"){
       match["subscription.planType"] = req.query.plan;
     }
-    
+
     const search = req.query.search;
 
     if (search && search.trim() !== "") {
@@ -30,11 +30,12 @@ exports.getAlertMonitoring = async (req, res) => {
       ];
     }
 
-    console.log("REQ QUERY 👉", req.query);
-console.log("MATCH 👉", match);
+    // ✅ COUNT (total records)
+    const totalCount = await Alert.countDocuments(match);
 
     const alerts = await Alert.aggregate([
-      
+      { $match: match },
+
       {
         $lookup: {
           from: "users",
@@ -43,7 +44,6 @@ console.log("MATCH 👉", match);
           as: "user"
         }
       },
-      
       { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
 
       {
@@ -55,8 +55,6 @@ console.log("MATCH 👉", match);
         }
       },
       { $unwind: { path: "$subscription", preserveNullAndEmptyArrays: true } },
-
-      { $match: match },
 
       {
         $lookup: {
@@ -97,10 +95,6 @@ console.log("MATCH 👉", match);
           alertType: "$type",
           status: 1,
           retryCount: 1,
-          failureReason: 1,
-          lastAttemptAt: 1,
-          location: 1,
-          contactsCount: { $size: "$contacts" },
           createdAt: 1
         }
       },
@@ -111,15 +105,15 @@ console.log("MATCH 👉", match);
 
     ]);
 
-    console.log("ALERTS COUNT 👉", alerts.length);
-
-    res.json(alerts);
+    res.json({
+      data: alerts,
+      totalPages: Math.ceil(totalCount / limit) // ✅ IMPORTANT
+    });
 
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
-
 exports.getAlertStats = async (req, res) => {
   try {
 

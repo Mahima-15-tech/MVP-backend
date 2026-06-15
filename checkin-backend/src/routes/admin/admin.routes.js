@@ -56,6 +56,11 @@ require("../../controllers/adminpanel/adminSystem.controller");
 
 
 
+
+
+
+
+
 // const { getSMSLogs } = require("../controllers/admin/adminsmscontroller");
 
 
@@ -72,7 +77,7 @@ const {
   deleteAdmin
 } = require("../../controllers/adminpanel/admin.settings.controller");
 
-const { getSMSLogs } =
+const { getSMSLogs,  getSMSStats } =
 require("../../controllers/adminpanel/adminSms.controller");
 
 const {
@@ -171,6 +176,9 @@ router.get("/alerts", adminAuth, getAlerts);
 
 router.get("/alert-monitoring", adminAuth, getAlertMonitoring);
 router.get("/alert-stats",adminAuth, getAlertStats);
+
+
+router.get("/sms-stats", getSMSStats);
 
 /* ================= CHECKINS ================= */
 

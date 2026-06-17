@@ -30,6 +30,24 @@ exports.getAlertMonitoring = async (req, res) => {
       ];
     }
 
+    if (req.query.today === "true") {
+      const now = new Date();
+    
+      const todayStart = new Date(
+        Date.UTC(
+          now.getUTCFullYear(),
+          now.getUTCMonth(),
+          now.getUTCDate(),
+          0,0,0,0
+        )
+      );
+    
+      match.createdAt = {
+        $gte: todayStart,
+        $lte: new Date()
+      };
+    }
+
     // ✅ COUNT (total records)
     const totalCount = await Alert.countDocuments(match);
 

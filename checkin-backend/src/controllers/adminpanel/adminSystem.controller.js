@@ -2,12 +2,12 @@ exports.getSystemHealth = async (req, res) => {
     try {
   
       // Example logic
-      const smsConnected = true; // check your SMS provider status
+      const smsConnected = false; // check your SMS provider status
       const serverRunning = true;
   
       res.json({
-        smsStatus: smsConnected ? "Connected" : "Disconnected",
-        serverStatus: serverRunning ? "Running" : "Down",
+        smsStatus: smsConnected ? "Online" : "Offline",
+        serverStatus: serverRunning ? "Running" : "Stopped",
         failedSMS24h: 3
       });
   

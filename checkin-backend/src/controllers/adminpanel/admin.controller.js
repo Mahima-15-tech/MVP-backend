@@ -622,8 +622,11 @@ exports.getUsersDashboardUltra = async (req, res) => {
       users: {
         page,
         limit,
-        total: totalUsers,
-        pages: Math.ceil(totalUsers / limit),
+    
+
+// ✅ replace with:
+total: usersResult[0].total[0]?.count || 0,
+pages: Math.ceil((usersResult[0].total[0]?.count || 0) / limit),
         data: usersData
       }
 
@@ -722,6 +725,7 @@ exports.exportUsersCSV = async (req, res) => {
     
 
 exports.getCheckinLogs = async (req, res) => {
+  console.log("API HIT ✅");
   try {
 
     const { status, search } = req.query;

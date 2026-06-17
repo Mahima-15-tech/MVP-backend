@@ -21,15 +21,27 @@ exports.getSMSLogs = async (req, res) => {
       ];
     }
 
-    // ✅ STATUS FILTER
-    if (status && status !== "ALL") {
-      query.status = status.toUpperCase();
-    }
 
-    const logs = await SMSLog.find(query)
-    .sort({ createdAt: -1 })
-    .skip(skip)      
-    .limit(limit); 
+    // ✅ STATUS FILTER
+if (status && status !== "ALL") {
+  query.status = status.toUpperCase();
+}
+
+// ✅ 24h FILTER (FIXED)
+if (req.query.range === "24h") {
+  const now = new Date();
+  const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+  query.createdAt = {
+    $gte: last24h,
+    $lte: now
+  };
+}
+
+const logs = await SMSLog.find(query)
+.sort({ createdAt: -1 })
+.skip(skip)
+.limit(limit);
     const formatted = [];
 
     for (let log of logs) {
@@ -44,10 +56,7 @@ exports.getSMSLogs = async (req, res) => {
         "Pending": "PENDING"
       };
     
-      if (req.query.range === "24h") {
-        const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        query.createdAt = { $gte: last24h };
-      }
+      
 
       // ✅ APPLY FILTER
       if (consent && consent !== "ALL") {
@@ -113,31 +122,33 @@ exports.getSMSLogs = async (req, res) => {
 exports.getSMSStats = async (req, res) => {
   try {
 
+    let matchStage = {};
+
+// ✅ range filter
+if (req.query.range === "24h") {
+  const now = new Date();
+  const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+  matchStage.createdAt = {
+    $gte: last24h,
+    $lte: now
+  };
+}
+
+// ✅ status filter (IMPORTANT)
+if (req.query.status && req.query.status !== "ALL") {
+  matchStage.status = req.query.status.toUpperCase();
+}
+
     const stats = await SMSLog.aggregate([
+      { $match: matchStage },
       {
         $group: {
           _id: null,
-
           total: { $sum: 1 },
-
-          sent: {
-            $sum: {
-              $cond: [{ $eq: ["$status", "SENT"] }, 1, 0]
-            }
-          },
-
-          pending: {
-            $sum: {
-              $cond: [{ $eq: ["$status", "PENDING"] }, 1, 0]
-            }
-          },
-
-          failed: {
-            $sum: {
-              $cond: [{ $eq: ["$status", "FAILED"] }, 1, 0]
-            }
-          }
-
+          sent: { $sum: { $cond: [{ $eq: ["$status", "SENT"] }, 1, 0] }},
+          pending: { $sum: { $cond: [{ $eq: ["$status", "PENDING"] }, 1, 0] }},
+          failed: { $sum: { $cond: [{ $eq: ["$status", "FAILED"] }, 1, 0] }}
         }
       }
     ]);
@@ -155,3 +166,5 @@ exports.getSMSStats = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+

@@ -3,6 +3,7 @@ const Subscription = require("../../models/subscription");
 const Alert = require("../../models/Alert");
 const CreditTransaction = require("../../models/creditTransaction");
 const { getRevenueData } = require("./adminRevenueController");
+const SMSLog = require("../../models/SMSLog");
 
 exports.getDashboardSummary = async (req, res) => {
   try {
@@ -24,16 +25,16 @@ exports.getDashboardSummary = async (req, res) => {
 
       User.countDocuments(),
 
-     
+      
 
       Alert.countDocuments({
         status: { $in: ["SMS_SENT", "SENT"] },
         createdAt: { $gte: todayStart }
       }),
 
-      // ✅ FIXED (24h)
-      Alert.countDocuments({
-        status: { $in: ["FAILED", "SMS_FAILED"] },
+  
+      SMSLog.countDocuments({
+        status: "FAILED",
         createdAt: { $gte: last24h }
       }),
 
@@ -75,9 +76,29 @@ exports.getDashboardSummary = async (req, res) => {
     
     ]);
     const activeSubscribersAgg = await Subscription.aggregate([
-      { $match: { status: "ACTIVE" } },
       {
-        $group: { _id: "$userId" } // ✅ unique users
+        $match: { status: "ACTIVE" }
+      },
+      {
+        $group: {
+          _id: "$userId"
+        }
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "_id",
+          foreignField: "_id",
+          as: "user"
+        }
+      },
+      {
+        $unwind: "$user"
+      },
+      {
+        $match: {
+          "user.isBanned": { $ne: true }   // ✅ banned hata do
+        }
       },
       {
         $count: "count"

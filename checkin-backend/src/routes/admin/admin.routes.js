@@ -74,7 +74,9 @@ const {
   getAllAdmins,
   updateProfile,
   getPasswordHistory,
-  deleteAdmin
+  deleteAdmin,
+  getApiKeys,
+  updateApiKeys
 } = require("../../controllers/adminpanel/admin.settings.controller");
 
 const { getSMSLogs,  getSMSStats } =
@@ -196,6 +198,9 @@ router.post(
   requireSuperAdmin,
   createAdmin
 );
+
+router.get("/api-key", adminAuth, getApiKeys);
+router.post("/api-keys", adminAuth, updateApiKeys);
 
 router.get("/sms-tracker", getSMSLogs);
 

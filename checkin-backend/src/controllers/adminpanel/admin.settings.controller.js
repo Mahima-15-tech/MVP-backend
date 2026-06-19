@@ -1,6 +1,6 @@
 const Admin = require("../../models/Admin");
 const bcrypt = require("bcryptjs");
-
+const Settings = require("../../models/Settings");
 /* ===============================
    GET CURRENT ADMIN PROFILE
 ================================= */
@@ -122,5 +122,47 @@ exports.deleteAdmin = async (req, res) => {
 
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getApiKeys = async (req, res) => {
+  try {
+    const settings = await Settings.findOne();
+
+    res.json({
+      stripe: settings?.stripeSecretKey || "",
+      twilioSid: settings?.twilioAccountSid || "",
+      twilioToken: settings?.twilioAuthToken || ""
+    });
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.updateApiKeys = async (req, res) => {
+  try {
+    const { stripe, twilioSid, twilioToken } = req.body;
+
+    let settings = await Settings.findOne();
+
+    if (!settings) {
+      settings = new Settings({
+        stripeSecretKey: stripe,
+        twilioAccountSid: twilioSid,
+        twilioAuthToken: twilioToken
+      });
+    } else {
+      settings.stripeSecretKey = stripe;
+      settings.twilioAccountSid = twilioSid;
+      settings.twilioAuthToken = twilioToken;
+    }
+
+    await settings.save();
+
+    res.json({ message: "API Keys Updated" });
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };

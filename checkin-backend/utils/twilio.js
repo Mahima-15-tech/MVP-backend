@@ -1,8 +1,16 @@
+const Settings = require("../src/models/Settings");
 const twilio = require("twilio");
 
-const client = twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
-);
+exports.getTwilioClient = async () => {
 
-module.exports = client;
+  const settings = await Settings.findOne();
+
+  if (!settings || !settings.twilioAccountSid || !settings.twilioAuthToken) {
+    throw new Error("Twilio keys not configured");
+  }
+
+  return twilio(
+    settings.twilioAccountSid,
+    settings.twilioAuthToken
+  );
+};

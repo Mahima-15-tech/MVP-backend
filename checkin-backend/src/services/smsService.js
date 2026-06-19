@@ -1,4 +1,4 @@
-const client = require("../../utils/twilio");
+const { getTwilioClient } = require("../../utils/twilio");
 const SMSLog = require("../models/SMSLog");
 
 exports.sendSMS = async ({
@@ -10,6 +10,8 @@ exports.sendSMS = async ({
   type
 }) => {
   try {
+
+    const client = await getTwilioClient(); // ✅ dynamic
 
     const sms = await client.messages.create({
       body: message,
@@ -24,7 +26,7 @@ exports.sendSMS = async ({
       recipientNumber,
       type,
       status: "SENT",
-      retryCount: 1, // 👈 ADD
+      retryCount: 1,
       plivoMessageId: sms.sid
     });
 

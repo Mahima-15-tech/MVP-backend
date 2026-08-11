@@ -293,7 +293,7 @@ exports.saveDeviceToken = async (req, res) => {
     }
 
     await User.findByIdAndUpdate(req.user.userId, {
-      fcmToken: token,
+      fcmToken: devicetoken,
     });
 
     res.json({ message: "Device token saved" });

@@ -2,6 +2,8 @@ const mongoose = require("mongoose");
 const CreditTransaction = require("../models/creditTransaction");
 const Subscription = require("../models/subscription");
 
+const { sendPush } = require("./pushService");
+
 /**
  * Get latest balance safely
  */
@@ -71,22 +73,24 @@ async function deductCredit(userId, reason) {
       balanceAfter: newBalance,
     }], { session });
 
-    // ✅ 🔥 ADD THIS BLOCK HERE
-    const { sendPushNotification } = require("../../utils/pushNotification");
+    
 
     const sub = await Subscription.findOne({ userId });
 
-    if (
-      newBalance === 1 &&
-      sub &&
-      sub.status === "ACTIVE" &&
-      (sub.planType === "MONTHLY" || sub.planType === "YEARLY")
-    ) {
-      await sendPushNotification(userId, {
-        title: "Low Credits",
-        body: "Your credits are low. Please top-up to continue using the app."
-      });
-    }
+if (
+  newBalance === 1 &&
+  sub &&
+  sub.status === "ACTIVE" &&
+  (sub.planType === "MONTHLY" || sub.planType === "YEARLY")
+) {
+  await sendPush(
+    userId,
+    "Low Credits",
+    "Your credits are low. Please top-up to continue using the app.",
+    "LOW_CREDITS"
+  );
+}
+
 
     // ✅ commit AFTER push check
     await session.commitTransaction();

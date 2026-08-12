@@ -1,4 +1,4 @@
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+const getStripe = require("../config/stripe");
 const Transaction = require("../models/Transaction");
 const SubscriptionHistory = require("../models/SubscriptionHistory");
 
@@ -7,9 +7,9 @@ const Subscription = require("../models/subscription");
 const { addCredits, resetCredits } = require("../services/creditService");
 
 exports.stripeWebhook = async (req, res) => {
-  console.log("🔥 WEBHOOK HIT");
+  console.log("WEBHOOK HIT");
   
-
+  const stripe = await getStripe();
   const sig = req.headers["stripe-signature"];
 
   let event;

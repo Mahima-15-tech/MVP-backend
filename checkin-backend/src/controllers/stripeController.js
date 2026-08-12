@@ -1,11 +1,79 @@
-const stripe = require("../config/stripe");
+const getStripe = require("../config/stripe");
 const User = require("../models/User");
 const Subscription = require("../models/subscription");
 const Transaction = require("../models/Transaction");
 
+exports.createTrialSession = async (req, res) => {
+  try {
+    const stripe = await getStripe();
+    const user = await User.findById(req.user.userId);
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found"
+      });
+    }
+
+    let customerId = user.stripeCustomerId;
+
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: user.email
+      });
+
+      customerId = customer.id;
+      user.stripeCustomerId = customerId;
+      await user.save();
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+
+      customer: customerId,
+
+      line_items: [
+        {
+          price: process.env.STRIPE_PRICE_MONTHLY,
+          quantity: 1
+        }
+      ],
+
+      subscription_data: {
+        trial_period_days: 7,
+
+        metadata: {
+          userId: user._id.toString(),
+          priceId: process.env.STRIPE_PRICE_MONTHLY,
+          type: "FREE_TRIAL"
+        }
+      },
+
+      metadata: {
+        userId: user._id.toString(),
+        priceId: process.env.STRIPE_PRICE_MONTHLY,
+        type: "FREE_TRIAL"
+      },
+
+      success_url: "http://localhost:3000/success",
+      cancel_url: "http://localhost:3000/cancel"
+    });
+
+    res.json({
+      url: session.url
+    });
+
+  } catch (error) {
+    console.error("❌ Trial Stripe Error:", error.message);
+
+    res.status(500).json({
+      message: error.message
+    });
+  }
+};
 
 exports.createSubscriptionSession = async (req, res) => {
     try {
+      const stripe = await getStripe();
       const { priceId } = req.body;
   
       const user = await User.findById(req.user.userId);
@@ -37,25 +105,38 @@ autoRenew: true
       }
   
       // ✅ STEP 3: CREATE SESSION
-      const isMonthly = priceId === process.env.STRIPE_PRICE_MONTHLY;
+      // const isMonthly = priceId === process.env.STRIPE_PRICE_MONTHLY;
 
       const session = await stripe.checkout.sessions.create({
         mode: "subscription",
         customer: customerId,
       
-        line_items: [{ price: priceId, quantity: 1 }],
+        line_items: [
+          {
+            price: priceId,
+            quantity: 1
+          }
+        ],
       
-        subscription_data: isMonthly
-          ? { trial_period_days: 7 } // 🔥 ONLY monthly me trial
-          : {},
+        // ❌ NO TRIAL HERE
+        // Direct Monthly / Yearly purchase will be charged normally
       
+        subscription_data: {
           metadata: {
             userId: user._id.toString(),
-            priceId: priceId   
-          },
+            priceId: priceId,
+            type: "PAID_SUBSCRIPTION"
+          }
+        },
+      
+        metadata: {
+          userId: user._id.toString(),
+          priceId: priceId,
+          type: "PAID_SUBSCRIPTION"
+        },
       
         success_url: "http://localhost:3000/success",
-        cancel_url: "http://localhost:3000/cancel",
+        cancel_url: "http://localhost:3000/cancel"
       });
   
       res.json({ url: session.url });
@@ -67,6 +148,7 @@ autoRenew: true
 
 exports.cancelSubscription = async (req, res) => {
     try {
+      const stripe = await getStripe();
       const userId = req.user.userId;
   
       const sub = await Subscription.findOne({ userId });
@@ -148,7 +230,7 @@ exports.cancelSubscription = async (req, res) => {
 
   exports.refundPayment = async (req, res) => {
     try {
-  
+      const stripe = await getStripe();
       const { paymentIntentId, reason  } = req.body;
   
       // ✅ STEP 1: find transaction
@@ -274,6 +356,7 @@ if (txn.type === "SUBSCRIPTION") {
 
   exports.createTopupSession = async (req, res) => {
     try {
+      const stripe = await getStripe();
       const { priceId } = req.body;
   
       const user = await User.findById(req.user.userId);
@@ -330,6 +413,7 @@ if (txn.type === "SUBSCRIPTION") {
 
   exports.openCustomerPortal = async (req, res) => {
     try {
+       const stripe = await getStripe();
       const userId = req.user.userId;
   
       const user = await User.findById(userId);

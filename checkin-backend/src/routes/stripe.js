@@ -3,6 +3,7 @@ const router = express.Router();
 
 const {
   createSubscriptionSession,
+  createTrialSession,
   cancelSubscription,
   upgradeSubscription,
   refundPayment,
@@ -11,6 +12,8 @@ const {
 } = require("../controllers/stripeController");
 
 const auth = require("../middleware/auth.middleware");
+
+router.post("/create-trial", auth, createTrialSession);
 
 router.post("/create-subscription", auth, createSubscriptionSession);
 router.post("/cancel-subscription", auth, cancelSubscription);

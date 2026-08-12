@@ -6,7 +6,7 @@ const getCountryRegion = require("../../utils/countryRegion");
 const buildSubscriptionResponse = require("../../utils/buildSubscriptionResponse");
 const Otp = require("../models/Otp");
 const sendOtpMail = require("../../utils/otpMail"); 
-const stripe = require("../config/stripe");
+const getStripe = require("../config/stripe");
 
 exports.sendOtp = async (req, res) => {
 
@@ -184,8 +184,10 @@ exports.verifyOtp = async (req, res) => {
     });
   }
   
-  // 🔥 STRIPE CUSTOMER CREATE
+  //  STRIPE CUSTOMER CREATE
   if (!user.stripeCustomerId) {
+    const stripe = await getStripe();
+  
     const customer = await stripe.customers.create({
       phone: user.phone,
       email: user.email || undefined

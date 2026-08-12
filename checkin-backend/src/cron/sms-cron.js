@@ -52,7 +52,7 @@ cron.schedule("*/2 * * * *", async () => {
   ? `https://maps.google.com/?q=${alert.location.lat},${alert.location.lng}`
   : "Location not available";
 
-const message = `🚨 ALERT! User needs help.\nLocation: ${locationLink}`;
+const message = `ALERT! User needs help.\nLocation: ${locationLink}`;
 
 try {
   console.log("🔥 ALERT TYPE FROM DB:", alert.type);
@@ -62,7 +62,8 @@ try {
     recipientName: contact.name,
     recipientNumber: contact.phone,
     message,
-    type: alert.type === "SOS" ? "SOS_ALERT" : "MISSED_ALERT"
+    type: alert.type === "SOS" ? "SOS_ALERT" : "MISSED_ALERT",
+    retryCount: alert.retryCount + 1
   });
 
   successCount++;

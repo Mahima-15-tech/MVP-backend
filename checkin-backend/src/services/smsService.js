@@ -7,11 +7,11 @@ exports.sendSMS = async ({
   recipientName,
   recipientNumber,
   message,
-  type
+  type,
+  retryCount = 1
 }) => {
   try {
-
-    const client = await getTwilioClient(); // ✅ dynamic
+    const client = await getTwilioClient();
 
     const sms = await client.messages.create({
       body: message,
@@ -26,8 +26,8 @@ exports.sendSMS = async ({
       recipientNumber,
       type,
       status: "SENT",
-      retryCount: 1,
-      plivoMessageId: sms.sid
+      twilioMessageId: sms.sid,
+      retryCount
     });
 
   } catch (error) {
@@ -39,7 +39,7 @@ exports.sendSMS = async ({
       recipientNumber,
       type,
       status: "FAILED",
-      retryCount: 1,
+      retryCount,
       failureReason: error.message
     });
 

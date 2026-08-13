@@ -54,8 +54,8 @@ exports.createTrialSession = async (req, res) => {
         type: "FREE_TRIAL"
       },
 
-      success_url: "http://localhost:3000/success",
-      cancel_url: "http://localhost:3000/cancel"
+      success_url: "solo://payment-success",
+      cancel_url: "solo://payment-cancel"
     });
 
     res.json({
@@ -135,8 +135,8 @@ autoRenew: true
           type: "PAID_SUBSCRIPTION"
         },
       
-        success_url: "http://localhost:3000/success",
-        cancel_url: "http://localhost:3000/cancel"
+        success_url: "solo://payment-success",
+        cancel_url: "solo://payment-cancel"
       });
   
       res.json({ url: session.url });
@@ -399,8 +399,8 @@ if (txn.type === "SUBSCRIPTION") {
           }
         },
   
-        success_url: "http://localhost:3000/success",
-        cancel_url: "http://localhost:3000/cancel",
+        success_url: "solo://payment-success",
+        cancel_url: "solo://payment-cancel",
       });
   
       res.json({ url: session.url });

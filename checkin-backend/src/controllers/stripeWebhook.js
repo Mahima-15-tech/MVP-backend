@@ -164,8 +164,13 @@ await SubscriptionHistory.create({
 // =====================================
 if (event.type === "invoice.payment_succeeded") {
 
+  console.log("🔥🔥 INVOICE PAYMENT SUCCEEDED HIT 🔥🔥");
+
   const invoice = event.data.object;
 
+  console.log("🔥 Invoice ID:", invoice.id);
+  console.log("🔥 Customer ID:", invoice.customer);
+  console.log("🔥 Billing Reason:", invoice.billing_reason);
   const user = await User.findOne({
     stripeCustomerId: invoice.customer
   });
@@ -229,13 +234,21 @@ if (event.type === "invoice.payment_succeeded") {
   // 💳 RESET + ADD MONTHLY/YEARLY CREDITS
   // =====================================
 
-  await resetCredits(user._id);
+  console.log("🔥 ABOUT TO ADD CREDITS");
+console.log("🔥 USER:", user._id);
+console.log("🔥 CREDITS:", sub.creditsPerCycle || 3);
+console.log("🔥 PLAN:", sub.planType);
+console.log("🔥 STATUS:", sub.status);
 
-  await addCredits(
-    user._id,
-    sub.creditsPerCycle || 3,
-    "RENEWAL"
-  );
+await resetCredits(user._id);
+
+await addCredits(
+  user._id,
+  sub.creditsPerCycle || 3,
+  "RENEWAL"
+);
+
+console.log("✅ CREDITS ADDED FROM INVOICE");
 
   // =====================================
   // 🔥 UPDATE SUBSCRIPTION
@@ -413,8 +426,13 @@ if (event.type === "customer.subscription.deleted") {
 // ✅ 4. CHARGE SUCCESS (FINAL )
 if (event.type === "charge.succeeded") {
 
+  console.log("🔥🔥 CHARGE SUCCEEDED HIT 🔥🔥");
+
   const charge = event.data.object;
 
+  console.log("🔥 Charge ID:", charge.id);
+  console.log("🔥 Payment Intent:", charge.payment_intent);
+  console.log("🔥 Customer:", charge.customer);
   console.log("🔥 CHARGE EVENT START");
   console.log("👉 PI:", charge.payment_intent);
 
@@ -457,6 +475,17 @@ if (event.type === "charge.succeeded") {
   const user = await User.findOne({
     stripeCustomerId: charge.customer
   });
+
+  console.log(
+    "🔥 CHARGE USER:",
+    user
+      ? {
+          id: user._id,
+          email: user.email,
+          stripeCustomerId: user.stripeCustomerId
+        }
+      : "USER NOT FOUND"
+  );
 
   if (!user) return;
 
@@ -515,13 +544,19 @@ if (event.type === "charge.succeeded") {
     });
 
     if (sub) {
-      await resetCredits(user._id);
+      console.log("🔥 ABOUT TO ADD CREDITS FROM CHARGE");
+console.log("🔥 PLAN TYPE:", planType);
+console.log("🔥 USER:", user._id);
 
-      await addCredits(
-        user._id,
-        sub.creditsPerCycle || 3,
-        "RENEWAL"
-      );
+await resetCredits(user._id);
+
+await addCredits(
+  user._id,
+  sub.creditsPerCycle || 3,
+  "RENEWAL"
+);
+
+console.log("✅ CREDITS ADDED FROM CHARGE");
 
       sub.status = "ACTIVE";
       await sub.save();

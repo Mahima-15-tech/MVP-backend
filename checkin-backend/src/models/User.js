@@ -57,10 +57,10 @@ alertVoice: {
   // subscription related
   subscriptionStatus: {
     type: String,
-    enum: ["ACTIVE", "EXPIRED", "NONE"],
+    enum: ["ACTIVE", "TRIAL", "EXPIRED", "CANCELLED", "NONE"],
     default: "NONE",
   },
-
+  
   isBanned: {
     type: Boolean,
     default: false

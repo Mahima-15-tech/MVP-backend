@@ -57,13 +57,17 @@ exports.stripeWebhook = async (req, res) => {
     
         // ✅ STEP 4: dates convert karo
        // ✅ STEP 5: price id nikalo
-const priceId = stripeSub.items.data[0].price.id;
+       const priceId = stripeSub.items.data[0].price.id;
 
-// ✅ STEP 6: plan detect karo
-const planType =
-  priceId === process.env.STRIPE_PRICE_YEARLY
-    ? "YEARLY"
-    : "MONTHLY";
+       // TRIAL ko alag plan rakho
+       const isTrial = stripeSub.status === "trialing";
+       
+       const planType = isTrial
+         ? "TRIAL"
+         : priceId === process.env.STRIPE_PRICE_YEARLY
+           ? "YEARLY"
+           : "MONTHLY";
+
 
 // ✅ STEP 7: dates convert karo
 let start = null;
@@ -98,7 +102,7 @@ if (!start || !end) {
   }
 }
         // ✅ STEP 7: TRIAL CHECK (IMPORTANT)
-        const isTrial = stripeSub.status === "trialing";
+        // const isTrial = stripeSub.status === "trialing";
 
         // ✅ TRIAL CREDIT ADD
 if (isTrial) {
@@ -155,52 +159,107 @@ await SubscriptionHistory.create({
 
     // =====================================
     // ✅ 2. RENEWAL PAYMENT
-    if (event.type === "invoice.payment_succeeded") {
+   // =====================================
+// ✅ 2. RENEWAL PAYMENT
+// =====================================
+if (event.type === "invoice.payment_succeeded") {
 
-      const invoice = event.data.object;
-    
-      const user = await User.findOne({
-        stripeCustomerId: invoice.customer
-      });
-    
-      if (!user) return;
-    
-      console.log("💰 INVOICE PAYMENT SUCCESS");
-    
-      const sub = await Subscription.findOne({ userId: user._id });
-      if (!sub) return;
+  const invoice = event.data.object;
 
-      await SubscriptionHistory.create({
-        userId: user._id,
-        previousPlan: sub.planType,
-        newPlan: sub.planType,
-        changedBy: "RENEWAL"
-      });
+  const user = await User.findOne({
+    stripeCustomerId: invoice.customer
+  });
 
+  if (!user) return;
 
-      if (sub.status === "CANCELLED") {
-        console.log("⛔ Skipping update - subscription already cancelled");
-        return;
-      }
-    
-      if (sub.lastInvoiceId === invoice.id) return;
-    
-      await resetCredits(user._id);
-      await addCredits(user._id, sub.creditsPerCycle || 3, "RENEWAL");
-    
-      await User.findByIdAndUpdate(user._id, {
-        subscriptionStatus: "ACTIVE"
-      });
-    
-      sub.status = "ACTIVE";
-      sub.lastInvoiceId = invoice.id;
-    
-      await sub.save();
+  console.log("💰 INVOICE PAYMENT SUCCESS");
 
-      
-    
-      console.log("✅ Credits updated (NO TRANSACTION HERE)");
-    }
+  const sub = await Subscription.findOne({
+    userId: user._id
+  });
+
+  if (!sub) return;
+
+  // Duplicate invoice check
+  if (sub.lastInvoiceId === invoice.id) {
+    console.log("⚠️ Invoice already processed");
+    return;
+  }
+
+  // =====================================
+  // 🔥 TRIAL → MONTHLY
+  // =====================================
+
+  const previousPlan = sub.planType;
+
+  let newPlan = sub.planType;
+
+  if (
+    sub.status === "TRIAL" &&
+    sub.stripePriceId === process.env.STRIPE_PRICE_MONTHLY
+  ) {
+    newPlan = "MONTHLY";
+
+    console.log("🎉 FREE TRIAL ENDED → MONTHLY");
+  }
+
+  // =====================================
+  // 📜 SAVE HISTORY
+  // =====================================
+
+  await SubscriptionHistory.create({
+    userId: user._id,
+    previousPlan,
+    newPlan,
+    changedBy: "RENEWAL"
+  });
+
+  // =====================================
+  // ❌ CANCELLED CHECK
+  // =====================================
+
+  if (sub.status === "CANCELLED") {
+    console.log(
+      "⛔ Skipping update - subscription already cancelled"
+    );
+    return;
+  }
+
+  // =====================================
+  // 💳 RESET + ADD MONTHLY/YEARLY CREDITS
+  // =====================================
+
+  await resetCredits(user._id);
+
+  await addCredits(
+    user._id,
+    sub.creditsPerCycle || 3,
+    "RENEWAL"
+  );
+
+  // =====================================
+  // 🔥 UPDATE SUBSCRIPTION
+  // =====================================
+
+  sub.planType = newPlan;
+  sub.status = "ACTIVE";
+  sub.autoRenew = true;
+  sub.lastInvoiceId = invoice.id;
+
+  await sub.save();
+
+  // =====================================
+  // 🔥 UPDATE USER
+  // =====================================
+
+  await User.findByIdAndUpdate(user._id, {
+    subscriptionStatus: "ACTIVE"
+  });
+
+  console.log(
+    `✅ Subscription renewed: ${previousPlan} → ${newPlan}`
+  );
+}
 
     // =====================================
     // ✅ 3. CANCEL REQUEST (period end)
@@ -311,38 +370,44 @@ await SubscriptionHistory.create({
     // =====================================
     // ❌ FINAL CANCEL
     // =====================================
-    if (event.type === "customer.subscription.deleted") {
+   // =====================================
+// ❌ FINAL CANCEL
+// =====================================
+if (event.type === "customer.subscription.deleted") {
 
-      await SubscriptionHistory.create({
-        userId: user._id,
-        previousPlan: "ACTIVE",
-        newPlan: "CANCELLED",
-        changedBy: "STRIPE"
-      });
+  const stripeSub = event.data.object;
 
-      
-      const sub = event.data.object;
+  const user = await User.findOne({
+    stripeCustomerId: stripeSub.customer
+  });
 
-      const user = await User.findOne({
-        stripeCustomerId: sub.customer
-      });
+  if (!user) return;
 
-      if (!user) return;
+  const sub = await Subscription.findOne({
+    userId: user._id
+  });
 
-      await Subscription.findOneAndUpdate(
-        { userId: user._id },
-        {
-          status: "CANCELLED",
-          autoRenew: false
-        }
-      );
+  await SubscriptionHistory.create({
+    userId: user._id,
+    previousPlan: sub?.planType || "NONE",
+    newPlan: "CANCELLED",
+    changedBy: "STRIPE"
+  });
 
-      await User.findByIdAndUpdate(user._id, {
-        subscriptionStatus: "CANCELLED"
-      });
-
-      console.log("❌ Subscription cancelled fully");
+  await Subscription.findOneAndUpdate(
+    { userId: user._id },
+    {
+      status: "CANCELLED",
+      autoRenew: false
     }
+  );
+
+  await User.findByIdAndUpdate(user._id, {
+    subscriptionStatus: "CANCELLED"
+  });
+
+  console.log("❌ Subscription cancelled fully");
+}
 
     // =====================================
 // ✅ 4. CHARGE SUCCESS (FINAL )

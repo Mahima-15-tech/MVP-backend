@@ -72,79 +72,115 @@ exports.createTrialSession = async (req, res) => {
 };
 
 exports.createSubscriptionSession = async (req, res) => {
-    try {
-      const stripe = await getStripe();
-      const { priceId } = req.body;
-  
-      const user = await User.findById(req.user.userId);
-  
-      // ✅ STEP 1: CHECK ACTIVE SUBSCRIPTION
-      const existingSub = await Subscription.findOne({
-        userId: user._id,
-        status: { $in: ["ACTIVE", "TRIAL"] },
-autoRenew: true
-      });
-  
-      if (existingSub) {
-        return res.status(400).json({
-          message: "You already have an active subscription"
-        });
-      }
-  
-      // ✅ STEP 2: CREATE / GET STRIPE CUSTOMER
-      let customerId = user.stripeCustomerId;
-  
-      if (!customerId) {
-        const customer = await stripe.customers.create({
-          email: user.email,
-        });
-  
-        customerId = customer.id;
-        user.stripeCustomerId = customerId;
-        await user.save();
-      }
-  
-      // ✅ STEP 3: CREATE SESSION
-      // const isMonthly = priceId === process.env.STRIPE_PRICE_MONTHLY;
+  try {
+    const stripe = await getStripe();
 
-      const session = await stripe.checkout.sessions.create({
-        mode: "subscription",
-        customer: customerId,
-      
-        line_items: [
-          {
-            price: priceId,
-            quantity: 1
+    const { priceId } = req.body;
+
+    console.log("=================================");
+    console.log("🔥 CREATE SUBSCRIPTION API HIT");
+    console.log("🔥 PRICE ID RECEIVED:", priceId);
+    console.log("🔥 MONTHLY PRICE:", process.env.STRIPE_PRICE_MONTHLY);
+    console.log("🔥 YEARLY PRICE:", process.env.STRIPE_PRICE_YEARLY);
+    console.log("=================================");
+
+    const user = await User.findById(req.user.userId);
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found"
+      });
+    }
+
+    // STEP 1: CHECK ACTIVE SUBSCRIPTION
+    const existingSub = await Subscription.findOne({
+      userId: user._id,
+      status: { $in: ["ACTIVE", "TRIAL"] },
+      autoRenew: true
+    });
+
+    console.log(
+      "🔥 EXISTING SUB:",
+      existingSub
+        ? {
+            planType: existingSub.planType,
+            status: existingSub.status,
+            stripePriceId: existingSub.stripePriceId,
+            autoRenew: existingSub.autoRenew
           }
-        ],
-      
-        // ❌ NO TRIAL HERE
-        // Direct Monthly / Yearly purchase will be charged normally
-      
-        subscription_data: {
-          metadata: {
-            userId: user._id.toString(),
-            priceId: priceId,
-            type: "PAID_SUBSCRIPTION"
-          }
-        },
-      
+        : "NO ACTIVE SUB"
+    );
+
+    if (existingSub) {
+      return res.status(400).json({
+        message: "You already have an active subscription"
+      });
+    }
+
+    // STEP 2: CREATE / GET STRIPE CUSTOMER
+    let customerId = user.stripeCustomerId;
+
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: user.email,
+      });
+
+      customerId = customer.id;
+
+      user.stripeCustomerId = customerId;
+      await user.save();
+    }
+
+    // STEP 3: CREATE STRIPE CHECKOUT SESSION
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+
+      customer: customerId,
+
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1
+        }
+      ],
+
+      subscription_data: {
         metadata: {
           userId: user._id.toString(),
           priceId: priceId,
           type: "PAID_SUBSCRIPTION"
-        },
-      
-        success_url: "solo://payment-success",
-        cancel_url: "solo://payment-cancel"
-      });
-  
-      res.json({ url: session.url });
-  
-    } catch (error) {
-      res.status(500).json({ message: error.message });
-    }
-  };
+        }
+      },
+
+      metadata: {
+        userId: user._id.toString(),
+        priceId: priceId,
+        type: "PAID_SUBSCRIPTION"
+      },
+
+      success_url: "solo://payment-success",
+      cancel_url: "solo://payment-cancel"
+    });
+
+    console.log("=================================");
+    console.log("🔥 STRIPE SESSION CREATED");
+    console.log("🔥 SESSION ID:", session.id);
+    console.log("🔥 SESSION MODE:", session.mode);
+    console.log("🔥 PRICE SENT TO STRIPE:", priceId);
+    console.log("=================================");
+
+    res.json({
+      url: session.url
+    });
+
+  } catch (error) {
+    console.error("❌ Create Subscription Error:", error);
+
+    res.status(500).json({
+      message: error.message
+    });
+  }
+};
 
 exports.cancelSubscription = async (req, res) => {
     try {
